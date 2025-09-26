@@ -34,18 +34,10 @@ else:
 try:
     message_count = 0
     start_time = time.time()
-    print(f"🧬 STARTING HIGH-THROUGHPUT GENOMIC STREAMING ON PARTITION {CONFIG.PARTITION_NUMBER}!")
-    print(f"📊 Target: MAXIMUM THROUGHPUT with ZERO BOTTLENECKS - press Ctrl+C to stop")
-    print(f"🔌 Connected to Kafka broker: {CONFIG.KAFKA_BROKER}")
-    print(f"📝 Writing to topic: {CONFIG.KAFKA_TOPIC}")
-    print(f"🧵 Using {CONFIG.NUM_THREADS} streaming threads (each sends independently)")
-    print("=" * 70)
+
     
-    # Initialize genomic generator
     gen = GenomicGenerator(num_threads=CONFIG.NUM_THREADS)
-    print(f"✅ Genomic Generator initialized with {len(gen.data):,} base samples")
-    
-    # Start streaming threads (each thread sends directly to Kafka)
+ 
     streaming_threads = gen.generate_threaded_kafka_stream(
         kafka_producer=producer,
         kafka_topic=CONFIG.KAFKA_TOPIC,
@@ -65,9 +57,8 @@ try:
         current_time = time.time()
         elapsed_time = current_time - start_time
         
-        # Calculate rates
         total_rate = current_count / elapsed_time if elapsed_time > 0 else 0
-        recent_rate = (current_count - last_count) / 5.0  # Last 5 seconds rate
+        recent_rate = (current_count - last_count) / 5.0 
         
         print(f"🚀 PARTITION {CONFIG.PARTITION_NUMBER}: {current_count:,} messages in {elapsed_time:.1f}s")
         print(f"⚡ TOTAL RATE: {total_rate:,.0f} msg/sec")
@@ -76,12 +67,11 @@ try:
         
         last_count = current_count
         
-        # Flush producer periodically
         producer.flush()
         
 except KeyboardInterrupt:
     print(f"\n🛑 Shutting down streaming producer for partition {CONFIG.PARTITION_NUMBER}...")
-    gen.stop_streaming()  # Signal threads to stop
+    gen.stop_streaming()  
     
     # Wait for threads to finish
     for thread in streaming_threads:
@@ -93,7 +83,7 @@ except Exception as e:
     print(f"❌ Unexpected error in producer: {e}")
     import traceback
     traceback.print_exc()
-    gen.stop_streaming()  # Stop threads on error
+    gen.stop_streaming() 
         
 finally:
     producer.flush()

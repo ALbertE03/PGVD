@@ -10,8 +10,6 @@ class GenomicGenerator:
         self.data=pd.read_csv(path_to_csv)
         self.num_threads=num_threads
         self.lock = threading.Lock()
-        self.queue = queue.Queue()
-        self.total_generated = 0
         self.__process_data()
 
     def __process_data(self):
@@ -57,7 +55,6 @@ class GenomicGenerator:
                     for _, row in batch_samples.iterrows():
                         if self.should_stop:
                             break
-                            
                         record = {
                             **row.to_dict(),
                             'thread_id': thread_id,
@@ -92,9 +89,6 @@ class GenomicGenerator:
             print(f"✅ THREAD-{thread_id} finished: {thread_sent:,} records sent")
         
 
-        start_time = time.time()
-        print(f"🚀 LAUNCHING {self.num_threads} STREAMING THREADS...")
-        
         for i in range(self.num_threads):
             thread = threading.Thread(
                 target=streaming_worker,
@@ -113,120 +107,6 @@ class GenomicGenerator:
         self.should_stop = True
         print("🛑 Stopping all streaming threads...")
 
-    def generate_threaded_samples(self, total_samples: int = 10000, samples_per_thread: int = 1000):
-        """
-        DEPRECATED: Use generate_threaded_kafka_stream for better performance
-        This method still has the bottleneck issue.
-        """
-        print("⚠️ WARNING: Using deprecated method with bottleneck. Use generate_threaded_kafka_stream instead!")
-      
-        results_queue = queue.Queue()
-        threads = []
-        samples_per_actual_thread = total_samples // self.num_threads
-        
-        def high_performance_worker(thread_id, num_to_generate):
-            """High-performance worker function for each thread"""
-            thread_start = time.time()
-           
-            try:
-                batch_size = min(500, num_to_generate)  
-                all_thread_samples = []
-                generated_count = 0
-                
-                while generated_count < num_to_generate:
-                    remaining = num_to_generate - generated_count
-                    current_batch = min(batch_size, remaining)
-                    
-                    batch_samples = self._generate_sample_batch_fast(current_batch, thread_id)
-                    with self.lock:
-                        self.total_generated += current_batch
-                    all_thread_samples.append(batch_samples)
-                    generated_count += current_batch
-                    
-                    if generated_count % 1000 == 0:
-                        elapsed = time.time() - thread_start
-                        rate = generated_count / elapsed if elapsed > 0 else 0
-                        print(f"🔥 THREAD-{thread_id}: {generated_count}/{num_to_generate} ({rate:.0f}/sec)")
-                
-                combined_thread_data = pd.concat(all_thread_samples, ignore_index=True)
-                
-                thread_time = time.time() - thread_start
-                thread_rate = len(combined_thread_data) / thread_time if thread_time > 0 else 0
-                
-                results_queue.put({
-                    'thread_id': thread_id,
-                    'samples': combined_thread_data,
-                    'count': len(combined_thread_data),
-                    'time': thread_time,
-                    'rate': thread_rate
-                })
-                
-            except Exception as e:
-                print(f"❌ THREAD-{thread_id} ERROR: {e}")
-                import traceback
-                traceback.print_exc()
-                results_queue.put({
-                    'thread_id': thread_id,
-                    'samples': pd.DataFrame(),
-                    'count': 0,
-                    'error': str(e)
-                })
-        
-        start_time = time.time()
-        print(f"🚀 LAUNCHING {self.num_threads} CONCURRENT THREADS...")
-        
-        for i in range(self.num_threads):
-            samples_for_this_thread = samples_per_actual_thread
-            if i == self.num_threads - 1: 
-                samples_for_this_thread = total_samples - (samples_per_actual_thread * (self.num_threads - 1))
-            
-            thread = threading.Thread(
-                target=high_performance_worker,
-                args=(i, samples_for_this_thread),
-                daemon=True,
-                name=f"GenomicWorker-{i}"
-            )
-            threads.append(thread)
-            thread.start()
-            print(f"🧵 Thread-{i} launched for {samples_for_this_thread} samples")
-        
-        all_samples = []
-        completed_threads = 0
-        total_generated = 0
-
-        while completed_threads < self.num_threads:
-            try:
-               
-                timeout = max(60, total_samples // 1000)  
-                result = results_queue.get(timeout=timeout)
-                completed_threads += 1
-                
-                if 'error' in result:
-                    print(f"⚠️ THREAD-{result['thread_id']} ERROR: {result['error']}")
-                else:
-                    all_samples.append(result['samples'])
-                    total_generated += result['count']
-                    
-                
-            except queue.Empty:
-                print("TIMEOUT - Some threads may still be working...")
-                break
-
-        print("Waiting for all threads to complete...")
-        for thread in threads:
-            thread.join(timeout=30)  
-        
-        if all_samples:
-            combined_samples = pd.concat(all_samples, ignore_index=True)
-            execution_time = time.time() - start_time
-            total_rate = len(combined_samples) / execution_time if execution_time > 0 else 0
-
-            
-            return combined_samples
-        else:
-            print("❌ NO SAMPLES GENERATED - All threads failed!")
-            return pd.DataFrame()
-    
     def _generate_sample_batch_fast(self, batch_size: int, thread_id: int):
         """
         ⚡ Fast batch generation optimized for high performance
@@ -276,26 +156,5 @@ class GenomicGenerator:
         
         return pd.DataFrame(batch_data, columns=self.data.columns)
     
-    def generate_kafka_records(self, num_records: int = 1000) -> list:
-        """
-        🚀 Generate records optimized for Kafka producer (returns list of dicts)
-        
-        Args:
-            num_records: Number of records to generate
-            
-        Returns:
-            List of dictionaries ready for Kafka
-        """
-     
-        
-        genomic_df = self.generate_threaded_samples(total_samples=num_records)
-        
-        kafka_records = []
-        for _, row in genomic_df.iterrows():
-            record = {
-                **row.to_dict(),
-            }
-            kafka_records.append(record)
-        
-        return kafka_records
+    
     

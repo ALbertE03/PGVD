@@ -41,6 +41,16 @@ services:
       PARTITION_NUMBER: 3
       PYTHONUNBUFFERED: 1
     restart: unless-stopped
+  genomic-producer-5:
+    build: .
+    depends_on:
+      kafka:
+        condition: service_healthy
+    environment:
+      KAFKA_BROKER: kafka:9092
+      PARTITION_NUMBER: 4
+      PYTHONUNBUFFERED: 1
+    restart: unless-stopped
   kafka:
     image: wurstmeister/kafka:latest
     depends_on:
@@ -53,7 +63,7 @@ services:
       KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-      KAFKA_CREATE_TOPICS: "genomic-data:4:1"
+      KAFKA_CREATE_TOPICS: "genomic-data:5:1"
       KAFKA_LOG_SEGMENT_BYTES: 1073741824
       KAFKA_LOG_RETENTION_MS: 86400000
     healthcheck:
