@@ -27,14 +27,98 @@ class GenomicGenerator:
             import traceback
             traceback.print_exc()
 
-    def generate_threaded_samples(self, total_samples: int = 10000, samples_per_thread: int = 1000):
+    def generate_threaded_kafka_stream(self, kafka_producer, kafka_topic, partition_number=None, records_per_thread=10000):
         """
-        🚀 Generate MASSIVE samples using high-performance concurrent threads
+        🚀 Generate and send data directly to Kafka WITHOUT bottlenecks!
+        Each thread sends its data immediately without waiting for others.
         
         Args:
-            total_samples: Total number of samples to generate
-            samples_per_thread: How many samples each thread should generate
+            kafka_producer: The KafkaProducer instance
+            kafka_topic: Topic to send to
+            partition_number: Specific partition (optional)
+            records_per_thread: Records each thread should generate continuously
         """
+        threads = []
+        self.total_sent = 0
+        self.should_stop = False
+        
+        def streaming_worker(thread_id):
+            """Worker that generates and sends data continuously"""
+            thread_sent = 0
+            thread_start = time.time()
+            batch_size = 1000 
+            
+            print(f"🧵 THREAD-{thread_id} started - streaming mode activated!")
+            
+            while not self.should_stop:
+                try:
+                    batch_samples = self._generate_sample_batch_fast(batch_size, thread_id)
+                    
+                    for _, row in batch_samples.iterrows():
+                        if self.should_stop:
+                            break
+                            
+                        record = {
+                            **row.to_dict(),
+                            'thread_id': thread_id,
+                            'partition': partition_number,
+                            'timestamp': time.time(),
+                            'generation_batch': int(time.time())
+                        }
+                        
+                        if partition_number is not None:
+                            kafka_producer.send(kafka_topic, value=record, partition=partition_number)
+                        else:
+                            kafka_producer.send(kafka_topic, value=record)
+                        
+                        thread_sent += 1
+                        
+                        with self.lock:
+                            self.total_sent += 1
+                    
+        
+                    if thread_sent % 1000 == 0:
+                        elapsed = time.time() - thread_start
+                        rate = thread_sent / elapsed if elapsed > 0 else 0
+                        print(f"🔥 THREAD-{thread_id}: {thread_sent:,} sent ({rate:.0f}/sec)")
+                    
+
+        
+                        
+                except Exception as e:
+                    print(f"❌ THREAD-{thread_id} ERROR: {e}")
+                    time.sleep(0.1)
+            
+            print(f"✅ THREAD-{thread_id} finished: {thread_sent:,} records sent")
+        
+
+        start_time = time.time()
+        print(f"🚀 LAUNCHING {self.num_threads} STREAMING THREADS...")
+        
+        for i in range(self.num_threads):
+            thread = threading.Thread(
+                target=streaming_worker,
+                args=(i,),
+                daemon=True,
+                name=f"KafkaStreamer-{i}"
+            )
+            threads.append(thread)
+            thread.start()
+            print(f"🧵 Thread-{i} launched for streaming")
+        
+        return threads  
+    
+    def stop_streaming(self):
+        """Stop all streaming threads"""
+        self.should_stop = True
+        print("🛑 Stopping all streaming threads...")
+
+    def generate_threaded_samples(self, total_samples: int = 10000, samples_per_thread: int = 1000):
+        """
+        DEPRECATED: Use generate_threaded_kafka_stream for better performance
+        This method still has the bottleneck issue.
+        """
+        print("⚠️ WARNING: Using deprecated method with bottleneck. Use generate_threaded_kafka_stream instead!")
       
         results_queue = queue.Queue()
         threads = []
@@ -109,9 +193,7 @@ class GenomicGenerator:
         all_samples = []
         completed_threads = 0
         total_generated = 0
-        
-        print(f"📊 MONITORING {self.num_threads} CONCURRENT THREADS...")
-        
+
         while completed_threads < self.num_threads:
             try:
                
@@ -127,10 +209,10 @@ class GenomicGenerator:
                     
                 
             except queue.Empty:
-                print("⏰ TIMEOUT - Some threads may still be working...")
+                print("TIMEOUT - Some threads may still be working...")
                 break
 
-        print("🔄 Waiting for all threads to complete...")
+        print("Waiting for all threads to complete...")
         for thread in threads:
             thread.join(timeout=30)  
         

@@ -34,73 +34,66 @@ else:
 try:
     message_count = 0
     start_time = time.time()
-    print(f"🧬 STARTING GENOMIC DATA PRODUCTION ON PARTITION {CONFIG.PARTITION_NUMBER}!")
-    print(f"📊 Target: MAXIMUM THROUGHPUT with REAL GENOMIC DATA - press Ctrl+C to stop")
+    print(f"🧬 STARTING HIGH-THROUGHPUT GENOMIC STREAMING ON PARTITION {CONFIG.PARTITION_NUMBER}!")
+    print(f"📊 Target: MAXIMUM THROUGHPUT with ZERO BOTTLENECKS - press Ctrl+C to stop")
     print(f"🔌 Connected to Kafka broker: {CONFIG.KAFKA_BROKER}")
     print(f"📝 Writing to topic: {CONFIG.KAFKA_TOPIC}")
-    print(f"🧵 Using {CONFIG.NUM_THREADS} threads for data generation")
+    print(f"🧵 Using {CONFIG.NUM_THREADS} streaming threads (each sends independently)")
     print("=" * 70)
     
-    print("🔬 Initializing Genomic Data Generator...")
+    # Initialize genomic generator
     gen = GenomicGenerator(num_threads=CONFIG.NUM_THREADS)
     print(f"✅ Genomic Generator initialized with {len(gen.data):,} base samples")
     
-    batch_size = 10000
-    current_batch = []
-    batch_index = 0
+    # Start streaming threads (each thread sends directly to Kafka)
+    streaming_threads = gen.generate_threaded_kafka_stream(
+        kafka_producer=producer,
+        kafka_topic=CONFIG.KAFKA_TOPIC,
+        partition_number=CONFIG.PARTITION_NUMBER,
+        records_per_thread=CONFIG.BATCH_SIZE_PER_THREAD
+    )
     
+    print(f"🚀 {len(streaming_threads)} threads now streaming data directly to Kafka!")
+    print("📈 Monitoring total throughput...")
+    
+    
+    last_count = 0
     while True:
-        if not current_batch or batch_index >= len(current_batch):
-            batch_start = time.time()
-            
-            current_batch = gen.generate_kafka_records(num_records=batch_size)
-            batch_index = 0
-
-            print(current_batch[0])
-
-            for record in current_batch:
-                record['partition'] = CONFIG.PARTITION_NUMBER
-                record['generation_batch'] = int(batch_start)
-            
-            batch_time = time.time() - batch_start
-            print(f"✅ Generated {len(current_batch)} records in {batch_time:.2f}s ({len(current_batch)/batch_time:.0f} records/sec)")
+        time.sleep(5)  
         
-        chunk_size = min(1000, len(current_batch) - batch_index)
+        current_count = gen.total_sent
+        current_time = time.time()
+        elapsed_time = current_time - start_time
         
-        for i in range(chunk_size):
-            record = current_batch[batch_index + i]
-            try:
-                if CONFIG.PARTITION_NUMBER is not None:
-                    producer.send(CONFIG.KAFKA_TOPIC, value=record, partition=CONFIG.PARTITION_NUMBER)
-                else:
-                    producer.send(CONFIG.KAFKA_TOPIC, value=record)
-                message_count += 1
-            except Exception as e:
-                print(f"❌ Error sending message: {e}")
-                continue
+        # Calculate rates
+        total_rate = current_count / elapsed_time if elapsed_time > 0 else 0
+        recent_rate = (current_count - last_count) / 5.0  # Last 5 seconds rate
         
-        batch_index += chunk_size
+        print(f"🚀 PARTITION {CONFIG.PARTITION_NUMBER}: {current_count:,} messages in {elapsed_time:.1f}s")
+        print(f"⚡ TOTAL RATE: {total_rate:,.0f} msg/sec")
+        print(f"🔥 RECENT RATE: {recent_rate:,.0f} msg/sec ({recent_rate/1000:.1f}K/sec)")
+        print(f"📊 ACTIVE THREADS: {len([t for t in streaming_threads if t.is_alive()])}/{len(streaming_threads)}")
         
-        if message_count % 1000000 == 0:
-            current_time = time.time()
-            elapsed_time = current_time - start_time
-            messages_per_second = message_count / elapsed_time if elapsed_time > 0 else 0
-            
-            print(f"🚀 PARTITION {CONFIG.PARTITION_NUMBER}: {message_count:,} genomic messages in {elapsed_time:.1f}s")
-            print(f"⚡ THROUGHPUT: {messages_per_second:,.0f} messages/second")
-            print(f"🔥 RATE: {messages_per_second/1000:.1f}K msg/s")
-            print(f"🧬 Batch progress: {batch_index}/{len(current_batch)}")
-            
-            producer.flush()
-    
-        time.sleep(0.001)
+        last_count = current_count
+        
+        # Flush producer periodically
+        producer.flush()
         
 except KeyboardInterrupt:
-    print(f"\n🛑 Shutting down producer for partition {CONFIG.PARTITION_NUMBER}...")
+    print(f"\n🛑 Shutting down streaming producer for partition {CONFIG.PARTITION_NUMBER}...")
+    gen.stop_streaming()  # Signal threads to stop
+    
+    # Wait for threads to finish
+    for thread in streaming_threads:
+        thread.join(timeout=2)
+    
+    print(f"✅ All threads stopped. Total sent: {gen.total_sent:,}")
+    
 except Exception as e:
     print(f"❌ Unexpected error in producer: {e}")
     import traceback
     traceback.print_exc()
+    gen.stop_streaming()  # Stop threads on error
         
 finally:
     producer.flush()
