@@ -2,7 +2,6 @@ import time
 import random
 import pandas as pd
 import threading
-import queue
 class GenomicGenerator:
 
 
@@ -21,13 +20,13 @@ class GenomicGenerator:
             self.data.dropna(inplace=True)
             self.data.columns = list(self.data.columns[:6])+[ f"step2_{x}" for x in self.data.columns[6:]]
         except Exception as e:
-            print(f"❌ Error processing data: {e}")
+            print(f"Error processing data: {e}")
             import traceback
             traceback.print_exc()
 
     def generate_threaded_kafka_stream(self, kafka_producer, kafka_topic, partition_number=None, records_per_thread=10000):
         """
-        🚀 Generate and send data directly to Kafka WITHOUT bottlenecks!
+        Generate and send data directly to Kafka
         Each thread sends its data immediately without waiting for others.
         
         Args:
@@ -46,7 +45,7 @@ class GenomicGenerator:
             thread_start = time.time()
             batch_size = 1000 
             
-            print(f"🧵 THREAD-{thread_id} started - streaming mode activated!")
+            print(f"THREAD-{thread_id} started - streaming mode activated!")
             
             while not self.should_stop:
                 try:
@@ -77,16 +76,16 @@ class GenomicGenerator:
                     if thread_sent % 1000 == 0:
                         elapsed = time.time() - thread_start
                         rate = thread_sent / elapsed if elapsed > 0 else 0
-                        print(f"🔥 THREAD-{thread_id}: {thread_sent:,} sent ({rate:.0f}/sec)")
+                        print(f"THREAD-{thread_id}: {thread_sent:,} sent ({rate:.0f}/sec)")
                     
 
         
                         
                 except Exception as e:
-                    print(f"❌ THREAD-{thread_id} ERROR: {e}")
+                    print(f"THREAD-{thread_id} ERROR: {e}")
                     time.sleep(0.1)
             
-            print(f"✅ THREAD-{thread_id} finished: {thread_sent:,} records sent")
+            print(f"THREAD-{thread_id} finished: {thread_sent:,} records sent")
         
 
         for i in range(self.num_threads):
@@ -98,18 +97,18 @@ class GenomicGenerator:
             )
             threads.append(thread)
             thread.start()
-            print(f"🧵 Thread-{i} launched for streaming")
+            print(f"Thread-{i} launched for streaming")
         
         return threads  
     
     def stop_streaming(self):
         """Stop all streaming threads"""
         self.should_stop = True
-        print("🛑 Stopping all streaming threads...")
+        print("Stopping all streaming threads...")
 
     def _generate_sample_batch_fast(self, batch_size: int, thread_id: int):
         """
-        ⚡ Fast batch generation optimized for high performance
+        Fast batch generation optimized for high performance
         """
         populations = self.data['Population'].unique()
         centers = self.data['Center'].dropna().unique()

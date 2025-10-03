@@ -4,7 +4,6 @@ import random
 from kafka import KafkaProducer
 from kafka.errors import NoBrokersAvailable
 from conf import CONFIG
-from const import *
 from genomic_generator import GenomicGenerator
 
 print(f"Waiting for Kafka to be ready on partition {CONFIG.PARTITION_NUMBER}...")
@@ -45,8 +44,8 @@ try:
         records_per_thread=CONFIG.BATCH_SIZE_PER_THREAD
     )
     
-    print(f"🚀 {len(streaming_threads)} threads now streaming data directly to Kafka!")
-    print("📈 Monitoring total throughput...")
+    print(f"{len(streaming_threads)} threads now streaming data directly to Kafka!")
+    print("Monitoring total throughput...")
     
     
     last_count = 0
@@ -60,27 +59,26 @@ try:
         total_rate = current_count / elapsed_time if elapsed_time > 0 else 0
         recent_rate = (current_count - last_count) / 5.0 
         
-        print(f"🚀 PARTITION {CONFIG.PARTITION_NUMBER}: {current_count:,} messages in {elapsed_time:.1f}s")
-        print(f"⚡ TOTAL RATE: {total_rate:,.0f} msg/sec")
-        print(f"🔥 RECENT RATE: {recent_rate:,.0f} msg/sec ({recent_rate/1000:.1f}K/sec)")
-        print(f"📊 ACTIVE THREADS: {len([t for t in streaming_threads if t.is_alive()])}/{len(streaming_threads)}")
+        print(f"PARTITION {CONFIG.PARTITION_NUMBER}: {current_count:,} messages in {elapsed_time:.1f}s")
+        print(f"TOTAL RATE: {total_rate:,.0f} msg/sec")
+        print(f"RECENT RATE: {recent_rate:,.0f} msg/sec ({recent_rate/1000:.1f}K/sec)")
+        print(f"ACTIVE THREADS: {len([t for t in streaming_threads if t.is_alive()])}/{len(streaming_threads)}")
         
         last_count = current_count
         
         producer.flush()
         
 except KeyboardInterrupt:
-    print(f"\n🛑 Shutting down streaming producer for partition {CONFIG.PARTITION_NUMBER}...")
+    print(f"\nShutting down streaming producer for partition {CONFIG.PARTITION_NUMBER}...")
     gen.stop_streaming()  
     
-    # Wait for threads to finish
     for thread in streaming_threads:
         thread.join(timeout=2)
     
-    print(f"✅ All threads stopped. Total sent: {gen.total_sent:,}")
+    print(f"All threads stopped. Total sent: {gen.total_sent:,}")
     
 except Exception as e:
-    print(f"❌ Unexpected error in producer: {e}")
+    print(f"Unexpected error in producer: {e}")
     import traceback
     traceback.print_exc()
     gen.stop_streaming() 
