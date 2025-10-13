@@ -8,7 +8,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY producer.py .
 COPY conf.py .
-COPY const.py .
 COPY genomic_generator.py .
 COPY aed.ipynb .
 RUN mkdir -p /app/data

@@ -1,0 +1,7 @@
+kafka-python==2.0.2
+numpy==1.26.4
+pandas==2.2.0
+gradio==4.44.0
+plotly==5.17.0
+hdfs==2.7.3
+requests==2.31.0
