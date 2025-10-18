@@ -1,88 +1,141 @@
 import time
 import json
-import random
+import os
 from kafka import KafkaProducer
 from kafka.errors import NoBrokersAvailable
 from conf import CONFIG
-from genomic_generator import GenomicGenerator
+from family_generator import FamilyGenerator
 
-print(f"Waiting for Kafka to be ready on partition {CONFIG.PARTITION_NUMBER}...")
+print("="*80)
+print("🧬 KAFKA PRODUCER - GENERADOR DE FAMILIAS GENÓMICAS")
+print("="*80)
+print(f"Partición: {CONFIG.PARTITION_NUMBER}")
+print(f"Hilos: {CONFIG.NUM_THREADS}")
+print("="*80)
+
+print(f"\n⏳ Esperando conexión con Kafka broker...")
 for attempt in range(30): 
     try:
         producer = KafkaProducer(
             bootstrap_servers=[CONFIG.KAFKA_BROKER],
             value_serializer=lambda v: json.dumps(v).encode("utf-8"),
             batch_size=CONFIG.BATCH_SIZE,
-            linger_ms=10,      # Wait 10ms to batch messages
+            linger_ms=10,
             compression_type='gzip',
             buffer_memory=CONFIG.BUFFER_MEMORY,
             max_in_flight_requests_per_connection=10,  
             acks=1,  
             retries=CONFIG.RETRIES,
             max_request_size=CONFIG.MAX_REQUEST_SIZE
-
         )
+        print("✅ Conectado a Kafka!")
         break
     except NoBrokersAvailable:
-        print(f"Attempt {attempt + 1}: Kafka not ready yet, waiting...")
+        print(f"  Intento {attempt + 1}: Kafka no disponible, esperando...")
         time.sleep(1)
 else:
-    print("Failed to connect to Kafka after 30 attempts")
+    print("❌ No se pudo conectar a Kafka después de 30 intentos")
     exit(1)
   
 try:
-    message_count = 0
-    start_time = time.time()
-
+    # Configurar rutas de genomas reales
+    genome_paths = {
+        'father': 'data/archive-2/Father Genome.csv',
+        'mother': 'data/archive-2/Mother Genome.csv',
+        'children': [
+            'data/archive-2/Child 1 Genome.csv',
+            'data/archive-2/Child 2 Genome.csv',
+            'data/archive-2/Child 3 Genome.csv'
+        ]
+    }
     
-    gen = GenomicGenerator(num_threads=CONFIG.NUM_THREADS)
- 
-    streaming_threads = gen.generate_threaded_kafka_stream(
+    # Inicializar generador de familias
+    family_gen = FamilyGenerator(genome_paths=genome_paths)
+    
+    # Topics separados para cada miembro de la familia
+    topics = {
+        'fathers': 'genomic-fathers',
+        'mothers': 'genomic-mothers',
+        'children': 'genomic-children'
+    }
+    
+    # Iniciar generación infinita con múltiples hilos
+    streaming_threads = family_gen.start_infinite_streaming(
         kafka_producer=producer,
-        kafka_topic=CONFIG.KAFKA_TOPIC,
+        topics=topics,
         partition_number=CONFIG.PARTITION_NUMBER,
-        records_per_thread=CONFIG.BATCH_SIZE_PER_THREAD
+        num_threads=CONFIG.NUM_THREADS
     )
     
-    print(f"{len(streaming_threads)} threads now streaming data directly to Kafka!")
-    print("Monitoring total throughput...")
+    print(f"💫 Generación infinita iniciada!")
+    print(f"📊 Monitoreando rendimiento...\n")
     
+    # Monitoreo continuo
+    last_families = 0
+    last_members = 0
+    start_time = time.time()
     
-    last_count = 0
     while True:
-        time.sleep(5)  
+        time.sleep(5)
         
-        current_count = gen.total_sent
+        stats = family_gen.get_statistics()
         current_time = time.time()
         elapsed_time = current_time - start_time
         
-        total_rate = current_count / elapsed_time if elapsed_time > 0 else 0
-        recent_rate = (current_count - last_count) / 5.0 
+        # Tasas de generación
+        families_rate = stats['families_generated'] / elapsed_time if elapsed_time > 0 else 0
+        members_rate = stats['total_members_sent'] / elapsed_time if elapsed_time > 0 else 0
         
-        print(f"PARTITION {CONFIG.PARTITION_NUMBER}: {current_count:,} messages in {elapsed_time:.1f}s")
-        print(f"TOTAL RATE: {total_rate:,.0f} msg/sec")
-        print(f"RECENT RATE: {recent_rate:,.0f} msg/sec ({recent_rate/1000:.1f}K/sec)")
-        print(f"ACTIVE THREADS: {len([t for t in streaming_threads if t.is_alive()])}/{len(streaming_threads)}")
+        recent_families_rate = (stats['families_generated'] - last_families) / 5.0
+        recent_members_rate = (stats['total_members_sent'] - last_members) / 5.0
         
-        last_count = current_count
+        print(f"{'='*80}")
+        print(f"📍 PARTICIÓN {CONFIG.PARTITION_NUMBER} | ⏱️  {elapsed_time:.1f}s transcurridos")
+        print(f"{'='*80}")
+        print(f"👨‍👩‍👧‍👦 Familias generadas: {stats['families_generated']:,}")
+        print(f"   └─ Padres:  {stats['fathers_sent']:,}")
+        print(f"   └─ Madres:  {stats['mothers_sent']:,}")
+        print(f"   └─ Hijos:   {stats['children_sent']:,}")
+        print(f"📤 Total miembros enviados: {stats['total_members_sent']:,}")
+        print(f"")
+        print(f"📈 TASA PROMEDIO:")
+        print(f"   └─ Familias: {families_rate:.1f} familias/seg")
+        print(f"   └─ Miembros: {members_rate:.1f} personas/seg")
+        print(f"")
+        print(f"⚡ TASA RECIENTE (últimos 5s):")
+        print(f"   └─ Familias: {recent_families_rate:.1f} familias/seg")
+        print(f"   └─ Miembros: {recent_members_rate:.1f} personas/seg")
+        print(f"")
+        print(f"🔧 Hilos activos: {len([t for t in streaming_threads if t.is_alive()])}/{len(streaming_threads)}")
+        print(f"{'='*80}\n")
+        
+        last_families = stats['families_generated']
+        last_members = stats['total_members_sent']
         
         producer.flush()
         
 except KeyboardInterrupt:
-    print(f"\nShutting down streaming producer for partition {CONFIG.PARTITION_NUMBER}...")
-    gen.stop_streaming()  
+    print(f"\n⚠️  Deteniendo generador de familias (Partición {CONFIG.PARTITION_NUMBER})...")
+    family_gen.stop_streaming()
     
     for thread in streaming_threads:
         thread.join(timeout=2)
     
-    print(f"All threads stopped. Total sent: {gen.total_sent:,}")
+    final_stats = family_gen.get_statistics()
+    print(f"\n{'='*80}")
+    print(f"📊 ESTADÍSTICAS FINALES")
+    print(f"{'='*80}")
+    print(f"Familias generadas: {final_stats['families_generated']:,}")
+    print(f"Total miembros enviados: {final_stats['total_members_sent']:,}")
+    print(f"{'='*80}\n")
     
 except Exception as e:
-    print(f"Unexpected error in producer: {e}")
+    print(f"❌ Error inesperado en producer: {e}")
     import traceback
     traceback.print_exc()
-    gen.stop_streaming() 
+    family_gen.stop_streaming()
         
 finally:
     producer.flush()
     producer.close()
+    print("✅ Producer cerrado correctamente")

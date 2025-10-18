@@ -1,0 +1,1 @@
+cd /Users/alberto/Desktop/PGVD/producer && docker-compose up --build -d
