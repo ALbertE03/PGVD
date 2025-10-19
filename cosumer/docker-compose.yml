@@ -1,0 +1,185 @@
+
+services:
+  # ==================== HDFS NAMENODE ====================
+  namenode:
+    image: bde2020/hadoop-namenode:2.0.0-hadoop3.2.1-java8
+    container_name: namenode
+    restart: always
+    ports:
+      - "9870:9870"  
+      - "9000:9000"  
+    environment:
+      - CLUSTER_NAME=genomic_cluster
+      - CORE_CONF_fs_defaultFS=hdfs://namenode:9000
+      - CORE_CONF_hadoop_http_staticuser_user=root
+      - CORE_CONF_hadoop_proxyuser_hue_hosts=*
+      - CORE_CONF_hadoop_proxyuser_hue_groups=*
+      - HDFS_CONF_dfs_webhdfs_enabled=true
+      - HDFS_CONF_dfs_permissions_enabled=false
+      - HDFS_CONF_dfs_replication=2
+    networks:
+      - hadoop
+      - producer_default
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9870/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ==================== HDFS DATANODEs ====================
+  datanode1:
+    image: bde2020/hadoop-datanode:2.0.0-hadoop3.2.1-java8
+    container_name: datanode1
+    restart: always
+    environment:
+      - CORE_CONF_fs_defaultFS=hdfs://namenode:9000
+      - CORE_CONF_hadoop_http_staticuser_user=root
+      - HDFS_CONF_dfs_datanode_data_dir=file:///hadoop/dfs/data
+    depends_on:
+      - namenode
+    networks:
+      - hadoop
+      - producer_default
+
+  datanode2:
+    image: bde2020/hadoop-datanode:2.0.0-hadoop3.2.1-java8
+    container_name: datanode2
+    restart: always
+    environment:
+      - CORE_CONF_fs_defaultFS=hdfs://namenode:9000
+      - CORE_CONF_hadoop_http_staticuser_user=root
+      - HDFS_CONF_dfs_datanode_data_dir=file:///hadoop/dfs/data
+    depends_on:
+      - namenode
+    networks:
+      - hadoop
+      - producer_default
+
+  datanode3:
+    image: bde2020/hadoop-datanode:2.0.0-hadoop3.2.1-java8
+    container_name: datanode3
+    restart: always
+    environment:
+      - CORE_CONF_fs_defaultFS=hdfs://namenode:9000
+      - CORE_CONF_hadoop_http_staticuser_user=root
+      - HDFS_CONF_dfs_datanode_data_dir=file:///hadoop/dfs/data
+    depends_on:
+      - namenode
+    networks:
+      - hadoop
+      - producer_default
+
+  # ==================== YARN RESOURCE MANAGER ====================
+  resourcemanager:
+    image: bde2020/hadoop-resourcemanager:2.0.0-hadoop3.2.1-java8
+    container_name: resourcemanager
+    restart: always
+    ports:
+      - "8088:8088"  
+    environment:
+      - CORE_CONF_fs_defaultFS=hdfs://namenode:9000
+      - YARN_CONF_yarn_resourcemanager_hostname=resourcemanager
+      - YARN_CONF_yarn_resourcemanager_address=resourcemanager:8032
+      - YARN_CONF_yarn_resourcemanager_scheduler_address=resourcemanager:8030
+      - YARN_CONF_yarn_resourcemanager_resource__tracker_address=resourcemanager:8031
+    depends_on:
+      - namenode
+      - datanode1
+      - datanode2
+      - datanode3
+    networks:
+      - hadoop
+      - producer_default
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8088/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ==================== YARN NODE MANAGER ====================
+  nodemanager1:
+    image: bde2020/hadoop-nodemanager:2.0.0-hadoop3.2.1-java8
+    container_name: nodemanager1
+    restart: always
+    environment:
+      - CORE_CONF_fs_defaultFS=hdfs://namenode:9000
+      - YARN_CONF_yarn_resourcemanager_hostname=resourcemanager
+      - YARN_CONF_yarn_nodemanager_aux__services=mapreduce_shuffle
+      - YARN_CONF_yarn_nodemanager_resource_memory__mb=4096
+      - YARN_CONF_yarn_nodemanager_resource_cpu__vcores=2
+    depends_on:
+      - resourcemanager
+    networks:
+      - hadoop
+      - producer_default
+
+  nodemanager2:
+    image: bde2020/hadoop-nodemanager:2.0.0-hadoop3.2.1-java8
+    container_name: nodemanager2
+    restart: always
+    environment:
+      - CORE_CONF_fs_defaultFS=hdfs://namenode:9000
+      - YARN_CONF_yarn_resourcemanager_hostname=resourcemanager
+      - YARN_CONF_yarn_nodemanager_aux__services=mapreduce_shuffle
+      - YARN_CONF_yarn_nodemanager_resource_memory__mb=4096
+      - YARN_CONF_yarn_nodemanager_resource_cpu__vcores=2
+    depends_on:
+      - resourcemanager
+    networks:
+      - hadoop
+      - producer_default
+
+  historyserver:
+    image: bde2020/hadoop-historyserver:2.0.0-hadoop3.2.1-java8
+    container_name: historyserver
+    restart: always
+    ports:
+      - "8188:8188"  
+    environment:
+      - CORE_CONF_fs_defaultFS=hdfs://namenode:9000
+    depends_on:
+      - namenode
+      - datanode1
+    networks:
+      - hadoop
+      - producer_default
+
+
+  genomic-consumer:
+    build: .
+    container_name: genomic-consumer
+    environment:
+      KAFKA_BROKER: kafka:9092
+      KAFKA_TOPIC: genomic-data
+      PYTHONUNBUFFERED: 1
+      HDFS_NAMENODE_URL: http://namenode:9870
+      HDFS_USER: root
+    ports:
+      - "7860:7860" 
+    restart: unless-stopped
+    depends_on:
+      namenode:
+        condition: service_healthy
+      resourcemanager:
+        condition: service_healthy
+      datanode1:
+        condition: service_started
+      datanode2:
+        condition: service_started
+      datanode3:
+        condition: service_started
+    networks:
+      - producer_default
+      - hadoop
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:7860/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+networks:
+  hadoop:
+    driver: bridge
+  producer_default:
+    external: true

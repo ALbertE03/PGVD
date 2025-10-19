@@ -1,121 +1,119 @@
 import pandas as pd
 import numpy as np
-from typing import Dict, List
-import random
+from .base_generator import BaseGenomeGenerator
 
-
-class Mother:
-    """Genera madres con genomas SINTÉTICOS."""
+class Mother(BaseGenomeGenerator):
+    """Genera madres con genomas SINTÉTICOS"""
     
     def __init__(self, genome_file: str = None):
-        self.genome_file = genome_file
-        self.genome_df = None  # DataFrame para análisis
-        self.genotype_distribution = {}  # Probabilidades de cada genotipo
-        self.chromosome_distribution = {}  # Probabilidades de cada cromosoma
-        self.position_template = []  # Posiciones (rsid, chr, pos) sin genotipos
-        
-        if genome_file:
-            self._load_complete_genome()
+        super().__init__(genome_file, member_type="mother")
     
-    def _load_complete_genome(self):
-        """Analiza el genoma real para extraer TODAS las distribuciones estadísticas."""
-        try:
-            print(f"Analizando genoma de la madre desde: {self.genome_file}")
-            
-            # Cargar el DataFrame completo para análisis
-            self.genome_df = pd.read_csv(self.genome_file)
-            self.total_snps = len(self.genome_df)
-
-            
-            print(f"Father: Analizando {self.total_snps:,} SNPs")
-            
-            # 1. Distribución de GENOTIPOS
-            if 'genotype' in self.genome_df.columns:
-                genotype_counts = self.genome_df['genotype'].value_counts()
-                total = genotype_counts.sum()
-                self.genotype_distribution = {
-                    gt: count/total for gt, count in genotype_counts.items()
-                }
-              
-            # 2. Distribución de CROMOSOMAS
-            if 'chromosome' in self.genome_df.columns:
-                chrom_counts = self.genome_df['chromosome'].value_counts()
-                total = chrom_counts.sum()
-                self.chromosome_distribution = {
-                    str(ch): count/total for ch, count in chrom_counts.items()
-                }
-
-                self.snps_per_chromosome = dict(chrom_counts)
-               
-            # 3. Calcular rangos de posición por cromosoma
-            self.position_ranges = {}
-            if 'chromosome' in self.genome_df.columns and 'position' in self.genome_df.columns:
-                for chrom in self.genome_df['chromosome'].unique():
-                    chrom_data = self.genome_df[self.genome_df['chromosome'] == chrom]['position']
-                    self.position_ranges[str(chrom)] = {
-                        'min': int(chrom_data.min()),
-                        'max': int(chrom_data.max()),
-                        'mean': float(chrom_data.mean()),
-                        'std': float(chrom_data.std()) if len(chrom_data) > 1 else 1000000
-                    }
-            
-         
-        except Exception as e:
-            print(f"❌ Error analizando genoma del padre: {e}")
-            import traceback
-            traceback.print_exc()
-            
-    
-    def generate(self, family_id: str) -> Dict:
+    def generate(self, family_id: str):
         """
-        Genera un NUEVO padre con genoma 100% SINTÉTICO.
-        Todas las columnas (rsid, chromosome, position, genotype) son generadas
-        siguiendo las distribuciones estadísticas del genoma real.
-        
-        Args:
-            family_id: ID único de la familia
-            
-        Returns:
-            Diccionario con datos del padre y su genoma completamente sintético
+        Genera una NUEVA madre con genoma 100% SINTÉTICO usando operaciones vectorizadas.
         """
-        synthetic_genome = []
+        if self.total_snps == 0:
+            print("❌ Error: No se pueden generar datos de la madre sin un genoma base cargado.")
+            return
+
+        variation_factor = np.random.beta(2, 2) * 0.6 + 0.7
+        mutation_rate = min(np.random.exponential(0.03) + 0.01, 0.08)
         
-        # Listas para generación
-        genotypes_list = list(self.genotype_distribution.keys())
-        genotypes_weights = list(self.genotype_distribution.values())
-        
-        chromosomes_list = list(self.chromosome_distribution.keys())
-        chromosomes_weights = list(self.chromosome_distribution.values())
-        
-    
-        for i in range(self.total_snps):
-            # 1. GENERAR CROMOSOMA sintético (según distribución)
-            synthetic_chromosome = random.choices(chromosomes_list, weights=chromosomes_weights, k=1)[0]
-            
-            # 2. GENERAR POSICIÓN 
-            if synthetic_chromosome in self.position_ranges:
-                pos_range = self.position_ranges[synthetic_chromosome]
-                # Generar posición usando distribución normal dentro del rango
-                synthetic_position = int(np.random.normal(pos_range['mean'], pos_range['std']))
-                # Asegurar que está dentro del rango válido
-                synthetic_position = max(pos_range['min'], min(pos_range['max'], synthetic_position))
-            
-            # 4. GENERAR GENOTIPO
-            synthetic_genotype = random.choices(genotypes_list, weights=genotypes_weights, k=1)[0]
-            
-            synthetic_genome.append({
-              
-                'chromosome': synthetic_chromosome,
-                'position': synthetic_position,
-                'genotype': synthetic_genotype
-            })
-        
-        return {
+        mother_info = {
             'family_id': family_id,
             'member_type': 'mother',
             'person_id': f"{family_id}_M",
             'gender': 'Female',
             'date_created': pd.Timestamp.now().isoformat(),
-            'genome': synthetic_genome, 
-            'genome_size': len(synthetic_genome),
         }
+        
+        print(f"      🧬 Madre {mother_info['person_id']}: Iniciando generación vectorizada de {self.total_snps:,} SNPs (variación: {variation_factor:.3f}, mutación: {mutation_rate:.1%})")
+
+        # Reutilizar la lógica de generación vectorizada (idéntica a la del padre)
+        # --- 1. Generación Vectorizada de CROMOSOMAS ---
+        chromosomes_list = np.array(list(self.chromosome_distribution.keys()))
+        chromosomes_weights = np.array(list(self.chromosome_distribution.values()))
+        noise = np.random.lognormal(0, 0.3, size=len(chromosomes_weights))
+        noisy_weights = chromosomes_weights * noise
+        noisy_weights /= np.sum(noisy_weights)
+        synthetic_chromosomes = np.random.choice(chromosomes_list, size=self.total_snps, p=noisy_weights)
+
+        # --- 2. Generación Vectorizada de POSICIONES ---
+        pos_stats = pd.DataFrame(self.position_ranges).T
+        pos_stats.index = pos_stats.index.astype(str)
+        synthetic_chromosomes_str = synthetic_chromosomes.astype(str)
+        mapped_stats = pos_stats.loc[synthetic_chromosomes_str]
+        
+        means = mapped_stats['mean'].to_numpy()
+        stds = mapped_stats['std'].to_numpy()
+        mins = mapped_stats['min'].to_numpy()
+        maxs = mapped_stats['max'].to_numpy()
+
+        strategies = np.random.rand(self.total_snps)
+        
+        mask1 = strategies < 0.33
+        varied_mean1 = means[mask1] * variation_factor
+        varied_std1 = stds[mask1] * np.random.gamma(2, 0.3, size=np.sum(mask1))
+        
+        mask2 = (strategies >= 0.33) & (strategies < 0.66)
+        varied_mean2 = means[mask2] * np.random.normal(variation_factor, 0.1, size=np.sum(mask2))
+        varied_std2 = stds[mask2] * np.random.lognormal(0, 0.4, size=np.sum(mask2))
+
+        mask3 = strategies >= 0.66
+        varied_mean3 = means[mask3] * (variation_factor + np.random.normal(0, 0.2, size=np.sum(mask3)))
+        varied_std3 = stds[mask3] * np.random.exponential(1.2, size=np.sum(mask3))
+
+        synthetic_positions = np.zeros(self.total_snps, dtype=int)
+        synthetic_positions[mask1] = np.random.normal(varied_mean1, varied_std1)
+        synthetic_positions[mask2] = np.random.normal(varied_mean2, varied_std2)
+        synthetic_positions[mask3] = np.random.normal(varied_mean3, varied_std3)
+        
+        np.clip(synthetic_positions, mins, maxs, out=synthetic_positions)
+
+        noise_mask = np.random.rand(self.total_snps) < 0.3
+        range_spans = maxs[noise_mask] - mins[noise_mask]
+        additional_noise = np.random.laplace(0, 0.1 * range_spans).astype(int)
+        synthetic_positions[noise_mask] += additional_noise
+        np.clip(synthetic_positions, mins, maxs, out=synthetic_positions)
+
+        # --- 3. Generación Vectorizada de GENOTIPOS ---
+        genotypes_list = np.array(list(self.genotype_distribution.keys()))
+        genotypes_weights = np.array(list(self.genotype_distribution.values()))
+        noise = np.random.gamma(2, 0.3, size=len(genotypes_weights)) + 0.4
+        noisy_weights = genotypes_weights * noise
+        noisy_weights /= np.sum(noisy_weights)
+        synthetic_genotypes = np.random.choice(genotypes_list, size=self.total_snps, p=noisy_weights)
+
+        # --- 4. Aplicación Vectorizada de MUTACIONES ---
+        mutation_mask = np.random.rand(self.total_snps) < mutation_rate
+        num_mutations = np.sum(mutation_mask)
+        
+        if num_mutations > 0:
+            current_genotypes = synthetic_genotypes[mutation_mask]
+            mutated_genotypes = np.array([
+                np.random.choice([gt for gt in genotypes_list if gt != current_gt])
+                for current_gt in current_genotypes
+            ])
+            synthetic_genotypes[mutation_mask] = mutated_genotypes
+
+        # --- 5. Creación y envío de mensajes ---
+        print(f"      🧬 Madre {mother_info['person_id']}: Ensamblando y enviando {self.total_snps:,} SNPs...")
+        
+        for i in range(self.total_snps):
+            snp_message = {
+                **mother_info,
+                'total_snps': self.total_snps,
+                'snp_data': {
+                    'chromosome': synthetic_chromosomes[i],
+                    'position': int(synthetic_positions[i]),
+                    'genotype': synthetic_genotypes[i]
+                },
+                'timestamp': pd.Timestamp.now().isoformat()
+            }
+            yield snp_message
+
+            if (i + 1) % 100000 == 0:
+                progress = ((i + 1) / self.total_snps) * 100
+                print(f"      📊 Madre: Enviados {i + 1:,}/{self.total_snps:,} SNPs ({progress:.1f}%)")
+        
+       
