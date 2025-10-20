@@ -135,13 +135,14 @@ services:
     container_name: genomic-consumer
     hostname: genomic-consumer
     environment:
-      KAFKA_BROKER: kafka:9092
-      KAFKA_TOPIC: genomic-data
+      KAFKA_BROKER_URL: kafka:9092
       PYTHONUNBUFFERED: 1
       HDFS_NAMENODE_URL: hdfs://namenode:9000
       HDFS_USER: root
+      PYSPARK_PYTHON: python3
+      PYSPARK_DRIVER_PYTHON: python3
     ports:
-      - "7860:7860" 
+      - "4040:4040"  # Spark UI
     restart: unless-stopped
     depends_on:
       namenode:
