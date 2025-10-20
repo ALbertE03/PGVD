@@ -154,18 +154,40 @@ def print_statistics_to_console(df, query_name, output_mode="complete"):
     
     return query
 
-def write_to_hdfs_parquet(df, path, query_name):
-    """Escribe resultados a HDFS en formato Parquet para análisis posterior"""
+def write_to_hdfs_parquet(df, path: str, query_name: str) -> None:
+    """
+    Escribe resultados a HDFS en formato Parquet usando foreachBatch
+    
+    Args:
+        df: DataFrame de Spark streaming a escribir
+        path: Ruta HDFS de destino
+        query_name: Nombre único para la query y checkpoint
+    
+    Note:
+        Usa foreachBatch para escribir cada micro-batch como archivo Parquet.
+        Esto permite trabajar con DataFrames batch donde append mode sí funciona.
+    """
+    def write_batch_to_hdfs(batch_df, batch_id):
+        """Función que procesa cada micro-batch"""
+        if batch_df.count() > 0:
+            # Escribir el batch con timestamp para evitar sobrescribir
+            output_path = f"{path}/batch_{batch_id}"
+            batch_df.write \
+                .mode("overwrite") \
+                .parquet(output_path)
+            logger.info(f"📦 Batch {batch_id} escrito a HDFS: {output_path} ({batch_df.count()} registros)")
+    
+    # Usar foreachBatch para procesar cada micro-batch
     query = df.writeStream \
-        .outputMode("append") \
-        .format("parquet") \
-        .option("path", path) \
-        .option("checkpointLocation", f"{CHECKPOINT_DIR}/{query_name}") \
+        .foreachBatch(write_batch_to_hdfs) \
+        .outputMode("update") \
+        .option("checkpointLocation", os.path.join(CHECKPOINT_DIR, query_name)) \
         .queryName(query_name) \
         .trigger(processingTime='30 seconds') \
         .start()
     
     return query
+
 
 def write_stats_to_kafka(df, topic, query_name, output_mode="update"):
     """Escribe estadísticas procesadas de vuelta a Kafka para que la consola las consuma"""
@@ -263,17 +285,18 @@ def main():
             output_mode="append"
         )
         
-        # Opcional: Escribir a HDFS para persistencia
-        # query_hdfs_member = write_to_hdfs_parquet(
-        #     member_stats, 
-        #     f"{HDFS_NAMENODE}/genomic-data/member_stats",
-        #     "member_stats_hdfs"
-        # )
-        # query_hdfs_family = write_to_hdfs_parquet(
-        #     family_stats,
-        #     f"{HDFS_NAMENODE}/genomic-data/family_stats", 
-        #     "family_stats_hdfs"
-        # )
+        # ✅ Escribir a HDFS usando foreachBatch (soporta agregaciones)
+        logger.info("💾 Configurando escritura a HDFS...")
+        query_hdfs_member = write_to_hdfs_parquet(
+            member_stats, 
+            f"{HDFS_NAMENODE}/genomic-data/member_stats",
+            "member_stats_hdfs"
+        )
+        query_hdfs_family = write_to_hdfs_parquet(
+            family_stats,
+            f"{HDFS_NAMENODE}/genomic-data/family_stats", 
+            "family_stats_hdfs"
+        )
         
         print()
         logger.info("✅ Spark Streaming iniciado correctamente")
@@ -282,8 +305,9 @@ def main():
         print("📊 PROCESAMIENTO EN TIEMPO REAL:")
         print("   • Consumiendo de Kafka topics: fathers, mothers, children")
         print("   • Calculando estadísticas por familia y miembro")
-        print(f"   • Publicando resultados a: {OUTPUT_TOPIC_FAMILY}, {OUTPUT_TOPIC_MEMBER}")
-        print("   • Actualizando cada 10 segundos")
+        print(f"   • Publicando resultados a Kafka: {OUTPUT_TOPIC_FAMILY}, {OUTPUT_TOPIC_MEMBER}")
+        print(f"   • Guardando en HDFS: {HDFS_NAMENODE}/genomic-data/")
+        print("   • Actualizando cada 30 segundos")
         print()
         print("🔍 ESTADÍSTICAS CALCULADAS:")
         print("   • SNPs procesados por miembro")
@@ -294,8 +318,12 @@ def main():
         print()
         print("⚡ OPTIMIZACIONES:")
         print("   • Uso de approx_count_distinct (requerido para streaming)")
-        print("   • Solo 2 queries de salida (Kafka, sin consola)")
-        print("   • Procesamiento cada 10 segundos (ajustado al rendimiento)")
+        print("   • Escritura a HDFS usando foreachBatch (soporta agregaciones)")
+        print("   • Procesamiento cada 30 segundos")
+        print()
+        print("💾 PERSISTENCIA:")
+        print("   • Kafka: Estadísticas en tiempo real")
+        print("   • HDFS: Archivos Parquet para análisis histórico")
         print()
         print("💡 La consola interactiva lee las estadísticas desde Kafka")
         print("💡 Ejecuta: cd cosumer && ./console.sh")
