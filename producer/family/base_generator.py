@@ -49,7 +49,7 @@ class BaseGenomeGenerator:
             print(f"❌ Error analizando genoma para '{self.member_type}': {e}")
             import traceback
             traceback.print_exc()
-            
+
     def generate(self, family_id: str):
         """
         Debe ser implementado por las clases hijas.

@@ -58,7 +58,7 @@ class FamilyGenerator:
         father_iter = self.father_generator.generate(family_id)
         mother_iter = self.mother_generator.generate(family_id)
         children_iters = [
-            self.child_generator.generate(family_id, i) 
+            self.child_generator.generate((family_id, i)) 
             for i in range(1, num_children + 1)
         ]
         

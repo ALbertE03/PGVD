@@ -42,12 +42,19 @@ class Mother(BaseGenomeGenerator):
         pos_stats = pd.DataFrame(self.position_ranges).T
         pos_stats.index = pos_stats.index.astype(str)
         synthetic_chromosomes_str = synthetic_chromosomes.astype(str)
-        mapped_stats = pos_stats.loc[synthetic_chromosomes_str]
         
-        means = mapped_stats['mean'].to_numpy()
-        stds = mapped_stats['std'].to_numpy()
-        mins = mapped_stats['min'].to_numpy()
-        maxs = mapped_stats['max'].to_numpy()
+        # Convertir a diccionarios para mapeo eficiente sin problemas de índice
+        mean_dict = pos_stats['mean'].to_dict()
+        std_dict = pos_stats['std'].to_dict()
+        min_dict = pos_stats['min'].to_dict()
+        max_dict = pos_stats['max'].to_dict()
+        
+        # Crear Series temporales y usar map con diccionarios
+        chrom_series = pd.Series(synthetic_chromosomes_str)
+        means = chrom_series.map(mean_dict).to_numpy()
+        stds = chrom_series.map(std_dict).to_numpy()
+        mins = chrom_series.map(min_dict).to_numpy(dtype=np.int64)
+        maxs = chrom_series.map(max_dict).to_numpy(dtype=np.int64)
 
         strategies = np.random.rand(self.total_snps)
         

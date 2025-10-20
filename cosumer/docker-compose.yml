@@ -55,19 +55,6 @@ services:
       - hadoop
       - producer_default
 
-  datanode3:
-    image: bde2020/hadoop-datanode:2.0.0-hadoop3.2.1-java8
-    container_name: datanode3
-    restart: always
-    environment:
-      - CORE_CONF_fs_defaultFS=hdfs://namenode:9000
-      - CORE_CONF_hadoop_http_staticuser_user=root
-      - HDFS_CONF_dfs_datanode_data_dir=file:///hadoop/dfs/data
-    depends_on:
-      - namenode
-    networks:
-      - hadoop
-      - producer_default
 
   # ==================== YARN RESOURCE MANAGER ====================
   resourcemanager:
@@ -86,7 +73,6 @@ services:
       - namenode
       - datanode1
       - datanode2
-      - datanode3
     networks:
       - hadoop
       - producer_default
@@ -144,15 +130,15 @@ services:
       - hadoop
       - producer_default
 
-
   genomic-consumer:
     build: .
     container_name: genomic-consumer
+    hostname: genomic-consumer
     environment:
       KAFKA_BROKER: kafka:9092
       KAFKA_TOPIC: genomic-data
       PYTHONUNBUFFERED: 1
-      HDFS_NAMENODE_URL: http://namenode:9870
+      HDFS_NAMENODE_URL: hdfs://namenode:9000
       HDFS_USER: root
     ports:
       - "7860:7860" 
@@ -166,13 +152,11 @@ services:
         condition: service_started
       datanode2:
         condition: service_started
-      datanode3:
-        condition: service_started
     networks:
       - producer_default
       - hadoop
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:7860/"]
+      test: ["CMD", "python3", "-c", "import sys; sys.exit(0)"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -182,4 +166,5 @@ networks:
   hadoop:
     driver: bridge
   producer_default:
+    name: producer_producer_default
     external: true

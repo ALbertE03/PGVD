@@ -9,15 +9,23 @@ RUN apt-get update && apt-get install -y \
     libsnappy-dev \
     curl \
     netcat-openbsd \
+    procps \
+    default-jre-headless \
     && rm -rf /var/lib/apt/lists/*
+
+
+ENV JAVA_HOME=/usr/lib/jvm/default-java
+ENV PATH="${JAVA_HOME}/bin:${PATH}"
+
 
 COPY requirements.txt .
 
 RUN pip install --no-cache-dir -r requirements.txt
 
+
 COPY . .
 
-# Hacer el entrypoint ejecutable
+
 RUN chmod +x entrypoint.sh
 
 EXPOSE 7860

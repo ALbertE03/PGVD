@@ -13,7 +13,7 @@ class Settings:
     
     def __init__(self):
         # Configuración de Kafka
-        self.KAFKA_BROKER_URL: str = os.getenv('KAFKA_BROKER_URL', 'localhost:9092')
+        self.KAFKA_BROKER_URL: str = os.getenv('KAFKA_BROKER_URL', 'kafka:9092')
         self.KAFKA_CLIENT_ID: str = os.getenv('KAFKA_CLIENT_ID', 'genomic-producer')
         
         # Topics de Kafka

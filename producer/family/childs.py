@@ -29,11 +29,13 @@ class Child(BaseGenomeGenerator):
                 print(f"   ✅ Perfil para Child {idx} cargado ({profile_generator.total_snps:,} SNPs)")
         print(f"\n{'='*70}\n✅ ANÁLISIS DE HIJOS COMPLETADO\n{'='*70}\n")
 
-    def generate(self, family_id: str, child_number: int):
+    def generate(self, family_ids: tuple):
         """
         Genera un NUEVO hijo con genoma sintético usando operaciones vectorizadas
         y el perfil estadístico del número de hijo especificado.
         """
+        family_id = family_ids[0]
+        child_number = family_ids[1]
         if child_number not in self.children_profiles:
             print(f"❌ Error: Perfil para el hijo número {child_number} no encontrado.")
             return
@@ -66,12 +68,19 @@ class Child(BaseGenomeGenerator):
         pos_stats = pd.DataFrame(profile.position_ranges).T
         pos_stats.index = pos_stats.index.astype(str)
         synthetic_chromosomes_str = synthetic_chromosomes.astype(str)
-        mapped_stats = pos_stats.loc[synthetic_chromosomes_str]
         
-        means = mapped_stats['mean'].to_numpy()
-        stds = mapped_stats['std'].to_numpy()
-        mins = mapped_stats['min'].to_numpy()
-        maxs = mapped_stats['max'].to_numpy()
+        # Convertir a diccionarios para mapeo eficiente sin problemas de índice
+        mean_dict = pos_stats['mean'].to_dict()
+        std_dict = pos_stats['std'].to_dict()
+        min_dict = pos_stats['min'].to_dict()
+        max_dict = pos_stats['max'].to_dict()
+        
+        # Crear Series temporales y usar map con diccionarios
+        chrom_series = pd.Series(synthetic_chromosomes_str)
+        means = chrom_series.map(mean_dict).to_numpy()
+        stds = chrom_series.map(std_dict).to_numpy()
+        mins = chrom_series.map(min_dict).to_numpy(dtype=np.int64)
+        maxs = chrom_series.map(max_dict).to_numpy(dtype=np.int64)
 
         strategies = np.random.rand(profile.total_snps)
         
@@ -140,7 +149,7 @@ class Child(BaseGenomeGenerator):
                 progress = ((i + 1) / profile.total_snps) * 100
                 print(f"      📊 Hijo #{child_number}: Enviados {i + 1:,}/{profile.total_snps:,} SNPs ({progress:.1f}%)")
  
-    def generate(self, family_id: str, child_number: int, 
+    def generate_with_inheritance(self, family_id: str, child_number: int, 
                 father_genome: List[Dict], mother_genome: List[Dict]):
         """
         Genera datos de un hijo usando el perfil específico del Child 1, 2 o 3 con VARIACIÓN ALEATORIA.

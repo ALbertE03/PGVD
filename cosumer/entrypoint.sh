@@ -25,10 +25,12 @@ echo "✅ Kafka está disponible!"
 
 # Esperar a que HDFS NameNode esté disponible
 echo "⏳ Esperando a que HDFS NameNode esté disponible..."
-HDFS_URL=${HDFS_NAMENODE_URL:-http://namenode:9870}
+HDFS_URL=${HDFS_NAMENODE_URL:-hdfs://namenode:9000}
+HDFS_WEB_URL=$(echo $HDFS_URL | sed 's/hdfs:\/\//http:\/\//g' | sed 's/:9000/:9870/g')
+
 timeout=60
-while ! curl -s -f "$HDFS_URL" > /dev/null; do
-    echo "   HDFS no disponible en $HDFS_URL, esperando..."
+while ! curl -s -f "$HDFS_WEB_URL" > /dev/null; do
+    echo "   HDFS no disponible en $HDFS_WEB_URL, esperando..."
     sleep 3
     timeout=$((timeout - 3))
     if [ $timeout -le 0 ]; then
@@ -39,18 +41,40 @@ done
 
 echo "✅ HDFS NameNode está disponible!"
 
-# Verificar conexión con DataNodes
+# Verificar DataNodes
 echo "⏳ Verificando DataNodes..."
 sleep 5
 echo "✅ DataNodes listos!"
 
 echo "=================================================="
-echo "🚀 Iniciando Dashboard de Consumidor..."
+echo "🚀 Iniciando servicios..."
 echo "=================================================="
 echo "📍 Kafka Broker: $KAFKA_BROKER"
 echo "📍 HDFS NameNode: $HDFS_URL"
-echo "📍 Dashboard URL: http://localhost:7860"
 echo "=================================================="
 
-# Iniciar la aplicación
-exec python consumer_dashboard.py
+# Iniciar HDFS loader en background
+echo "🔄 Iniciando HDFS Loader..."
+python hdfs_loader.py &
+LOADER_PID=$!
+
+# Esperar un poco para que el loader inicialice
+sleep 5
+
+# Iniciar dashboard simple
+echo "🎨 Iniciando Dashboard Simple..."
+python simple_dashboard.py &
+DASHBOARD_PID=$!
+
+# Función para cleanup
+cleanup() {
+    echo "🛑 Deteniendo servicios..."
+    kill $LOADER_PID 2>/dev/null
+    kill $DASHBOARD_PID 2>/dev/null
+    exit 0
+}
+
+trap cleanup SIGTERM SIGINT
+
+# Esperar a que los procesos terminen
+wait

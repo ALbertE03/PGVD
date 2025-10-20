@@ -16,7 +16,6 @@ class Father(BaseGenomeGenerator):
             print("❌ Error: No se pueden generar datos del padre sin un genoma base cargado.")
             return
 
-        # ... (el resto del método `generate` vectorizado permanece igual) ...
         variation_factor = np.random.beta(2, 2) * 0.6 + 0.7
         mutation_rate = min(np.random.exponential(0.03) + 0.01, 0.08)
         
@@ -28,7 +27,7 @@ class Father(BaseGenomeGenerator):
             'date_created': pd.Timestamp.now().isoformat(),
         }
         
-        print(f"      🧬 Padre {father_info['person_id']}: Iniciando generación vectorizada de {self.total_snps:,} SNPs (variación: {variation_factor:.3f}, mutación: {mutation_rate:.1%})")
+        print(f"      Padre {father_info['person_id']}: Iniciando generación vectorizada de {self.total_snps:,} SNPs (variación: {variation_factor:.3f}, mutación: {mutation_rate:.1%})")
 
         # --- 1. Generación Vectorizada de CROMOSOMAS ---
         chromosomes_list = np.array(list(self.chromosome_distribution.keys()))
@@ -43,12 +42,19 @@ class Father(BaseGenomeGenerator):
         # Convertir los nombres de los cromosomas a string para asegurar la coincidencia
         pos_stats.index = pos_stats.index.astype(str)
         synthetic_chromosomes_str = synthetic_chromosomes.astype(str)
-        mapped_stats = pos_stats.loc[synthetic_chromosomes_str]
         
-        means = mapped_stats['mean'].to_numpy()
-        stds = mapped_stats['std'].to_numpy()
-        mins = mapped_stats['min'].to_numpy()
-        maxs = mapped_stats['max'].to_numpy()
+        # Convertir a diccionarios para mapeo eficiente sin problemas de índice
+        mean_dict = pos_stats['mean'].to_dict()
+        std_dict = pos_stats['std'].to_dict()
+        min_dict = pos_stats['min'].to_dict()
+        max_dict = pos_stats['max'].to_dict()
+        
+        # Crear Series temporales y usar map con diccionarios
+        chrom_series = pd.Series(synthetic_chromosomes_str)
+        means = chrom_series.map(mean_dict).to_numpy()
+        stds = chrom_series.map(std_dict).to_numpy()
+        mins = chrom_series.map(min_dict).to_numpy(dtype=np.int64)
+        maxs = chrom_series.map(max_dict).to_numpy(dtype=np.int64)
 
         # Aplicar estrategias de variación de forma vectorizada
         strategies = np.random.rand(self.total_snps)

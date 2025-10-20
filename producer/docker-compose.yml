@@ -1,58 +1,20 @@
+
 services:
-  genomic-producer-1:
+  genomic-producer:
     build: .
     depends_on:
       kafka:
         condition: service_healthy
     environment:
-      KAFKA_BROKER: kafka:9092
-      PARTITION_NUMBER: 0
+      KAFKA_BROKER_URL: kafka:9092
       PYTHONUNBUFFERED: 1
     restart: unless-stopped
+    networks:
+      - producer_default
 
-  genomic-producer-2:
-    build: .
-    depends_on:
-      kafka:
-        condition: service_healthy
-    environment:
-      KAFKA_BROKER: kafka:9092
-      PARTITION_NUMBER: 1
-      PYTHONUNBUFFERED: 1
-    restart: unless-stopped
-
-  genomic-producer-3:
-    build: .
-    depends_on:
-      kafka:
-        condition: service_healthy
-    environment:
-      KAFKA_BROKER: kafka:9092
-      PARTITION_NUMBER: 2
-      PYTHONUNBUFFERED: 1
-    restart: unless-stopped
-  genomic-producer-4:
-    build: .
-    depends_on:
-      kafka:
-        condition: service_healthy
-    environment:
-      KAFKA_BROKER: kafka:9092
-      PARTITION_NUMBER: 3
-      PYTHONUNBUFFERED: 1
-    restart: unless-stopped
-  genomic-producer-5:
-    build: .
-    depends_on:
-      kafka:
-        condition: service_healthy
-    environment:
-      KAFKA_BROKER: kafka:9092
-      PARTITION_NUMBER: 4
-      PYTHONUNBUFFERED: 1
-    restart: unless-stopped
   kafka:
     image: wurstmeister/kafka:latest
+    container_name: kafka
     depends_on:
       - zookeeper
     ports:
@@ -63,7 +25,7 @@ services:
       KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-      KAFKA_CREATE_TOPICS: "genomic-fathers:5:1,genomic-mothers:5:1,genomic-children:5:1"
+      KAFKA_CREATE_TOPICS: "fathers:5:1,mothers:5:1,children:5:1"
       KAFKA_LOG_SEGMENT_BYTES: 1073741824
       KAFKA_LOG_RETENTION_MS: 86400000
     healthcheck:
@@ -71,8 +33,16 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+    networks:
+      - producer_default
+
   zookeeper:
     image: wurstmeister/zookeeper:latest
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
-  
+    networks:
+      - producer_default
+
+networks:
+  producer_default:
+    driver: bridge

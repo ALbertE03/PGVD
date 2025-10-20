@@ -2,27 +2,25 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
+# IMPORTANTE: Copiar requirements.txt primero (se cachea si no cambia)
 COPY requirements.txt .
 
+# Instalar dependencias de Python (se cachea si requirements.txt no cambia)
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy Python source files
+# Copiar archivos de código Python
 COPY producer.py .
 COPY config.py .
 COPY family_generator.py .
 COPY streaming_manager.py .
 COPY aed.ipynb .
 
-# Create necessary directories
-RUN mkdir -p /app/data
-RUN mkdir -p /app/family
-RUN mkdir -p /app/models
+# Crear directorios necesarios
+RUN mkdir -p /app/data /app/family /app/models
 
-# Copy data and modules
+# Copiar datos y módulos (esto va al final para que cambios en código no invaliden cache de pip)
 COPY data/ /app/data/
 COPY family/ /app/family/
 COPY models/ /app/models/
-
-EXPOSE 8080 8501
 
 CMD ["python", "producer.py"]
