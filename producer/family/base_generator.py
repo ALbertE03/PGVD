@@ -24,7 +24,9 @@ class BaseGenomeGenerator:
             
             self.genome_df = pd.read_csv(self.genome_file, low_memory=True)
             self.total_snps = len(self.genome_df)
-            
+            """indices_a_eliminar = self.genome_df[~self.genome_df['# rsid'].str.startswith('rs', na=False)].index
+            self.genome_df = self.genome_df.drop(indices_a_eliminar)"""
+            self.genome_df['position'].drop_duplicates(inplace=True)
             print(f"{self.member_type.capitalize()}: Analizando {self.total_snps:,} SNPs")
             
             if 'genotype' in self.genome_df.columns:
@@ -40,7 +42,7 @@ class BaseGenomeGenerator:
                 self.position_ranges = self.genome_df.groupby('chromosome')['position'].agg(['min', 'max', 'mean', 'std']).apply(
                     lambda r: r.to_dict(), axis=1
                 ).to_dict()
-                # Asegurar que std no sea NaN para cromosomas con un solo SNP
+
                 for chrom, stats in self.position_ranges.items():
                     if pd.isna(stats['std']):
                         self.position_ranges[chrom]['std'] = 1000000

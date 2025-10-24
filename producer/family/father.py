@@ -7,7 +7,46 @@ class Father(BaseGenomeGenerator):
     
     def __init__(self, genome_file: str = None):
         super().__init__(genome_file, member_type="father")
-    
+   
+
+    def generate_with_interpolation(self,synthetic_chromosomes):
+            from scipy.interpolate import interp1d
+            synthetic_chromosomes_str = synthetic_chromosomes.astype(str)
+            synthetic_positions = []
+            
+            for chrom in np.unique(synthetic_chromosomes_str):
+                # Posiciones reales ordenadas para este cromosoma
+                real_positions = np.sort(self.genome_df[self.genome_df['chromosome'].astype(str) == chrom]['position'].values)
+                
+                if len(real_positions) < 2:
+                    count = (synthetic_chromosomes_str == chrom).sum()
+                    samples = np.random.choice(real_positions, count, replace=True)
+                    synthetic_positions.extend(samples)
+                    continue
+                
+                # Creamos función de distribución acumulativa empírica
+                ecdf = np.arange(len(real_positions)) / len(real_positions)
+                
+                # Interpolamos la CDF inversa
+                inverse_cdf = interp1d(ecdf, real_positions, 
+                                    bounds_error=False, 
+                                    fill_value=(real_positions[0], real_positions[-1]))
+                
+                # Generamos muestras uniformes
+                count = (synthetic_chromosomes_str == chrom).sum()
+                uniform_samples = np.random.uniform(0, 1, count)
+                
+                # Aplicamos la CDF inversa
+                samples = inverse_cdf(uniform_samples).astype(int)
+                
+                # Pequeña perturbación
+                perturbation = np.random.randint(-1000, 1000, count)  # ±1000 bases
+                perturbed_samples = samples + perturbation
+                perturbed_samples = np.maximum(perturbed_samples, 1)
+                
+                synthetic_positions.extend(perturbed_samples)
+            
+            return np.array(synthetic_positions,dtype=int)
     def generate(self, family_id: str):
         """
         Genera un NUEVO padre con genoma 100% SINTÉTICO usando operaciones vectorizadas de NumPy.
@@ -32,55 +71,15 @@ class Father(BaseGenomeGenerator):
         # --- 1. Generación de CROMOSOMAS ---
         chromosomes_list = np.array(list(self.chromosome_distribution.keys()))
         chromosomes_weights = np.array(list(self.chromosome_distribution.values()))
-        noise = np.random.lognormal(0, 0.3, size=len(chromosomes_weights))
+        noise = np.random.beta(8, 8, size=len(chromosomes_weights)) * 0.3
         noisy_weights = chromosomes_weights * noise
+        noisy_weights = np.maximum(noisy_weights, 0.001)  
         noisy_weights /= np.sum(noisy_weights)
         synthetic_chromosomes = np.random.choice(chromosomes_list, size=self.total_snps, p=noisy_weights)
 
         # --- 2. Generación de POSICIONES ---
-        pos_stats = pd.DataFrame(self.position_ranges).T
-        pos_stats.index = pos_stats.index.astype(str)
-        synthetic_chromosomes_str = synthetic_chromosomes.astype(str)
-        
-        mean_dict = pos_stats['mean'].to_dict()
-        std_dict = pos_stats['std'].to_dict()
-        min_dict = pos_stats['min'].to_dict()
-        max_dict = pos_stats['max'].to_dict()
-        
-        chrom_series = pd.Series(synthetic_chromosomes_str)
-        means = chrom_series.map(mean_dict).to_numpy()
-        stds = chrom_series.map(std_dict).to_numpy()
-        mins = chrom_series.map(min_dict).to_numpy(dtype=np.int64)
-        maxs = chrom_series.map(max_dict).to_numpy(dtype=np.int64)
-
-        # Aplicar estrategias 
-        strategies = np.random.rand(self.total_snps)
-        
-        mask1 = strategies < 0.33
-        varied_mean1 = means[mask1] * variation_factor
-        varied_std1 = stds[mask1] * np.random.gamma(2, 0.3, size=np.sum(mask1))
-        
-        mask2 = (strategies >= 0.33) & (strategies < 0.66)
-        varied_mean2 = means[mask2] * np.random.normal(variation_factor, 0.1, size=np.sum(mask2))
-        varied_std2 = stds[mask2] * np.random.lognormal(0, 0.4, size=np.sum(mask2))
-
-        mask3 = strategies >= 0.66
-        varied_mean3 = means[mask3] * (variation_factor + np.random.normal(0, 0.2, size=np.sum(mask3)))
-        varied_std3 = stds[mask3] * np.random.exponential(1.2, size=np.sum(mask3))
-
-        synthetic_positions = np.zeros(self.total_snps, dtype=int)
-        synthetic_positions[mask1] = np.random.normal(varied_mean1, varied_std1)
-        synthetic_positions[mask2] = np.random.normal(varied_mean2, varied_std2)
-        synthetic_positions[mask3] = np.random.normal(varied_mean3, varied_std3)
-        
-        np.clip(synthetic_positions, mins, maxs, out=synthetic_positions)
-
-        noise_mask = np.random.rand(self.total_snps) < 0.3
-        range_spans = maxs[noise_mask] - mins[noise_mask]
-        additional_noise = np.random.laplace(0, 0.1 * range_spans).astype(int)
-        synthetic_positions[noise_mask] += additional_noise
-        np.clip(synthetic_positions, mins, maxs, out=synthetic_positions)
-
+            
+        synthetic_positions = self.generate_with_interpolation(synthetic_chromosomes)
         # --- 3. Generación de GENOTIPOS ---
         genotypes_list = np.array(list(self.genotype_distribution.keys()))
         genotypes_weights = np.array(list(self.genotype_distribution.values()))
