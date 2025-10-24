@@ -29,7 +29,7 @@ class Father(BaseGenomeGenerator):
         
         print(f"      Padre {father_info['person_id']}: Iniciando generación vectorizada de {self.total_snps:,} SNPs (variación: {variation_factor:.3f}, mutación: {mutation_rate:.1%})")
 
-        # --- 1. Generación Vectorizada de CROMOSOMAS ---
+        # --- 1. Generación de CROMOSOMAS ---
         chromosomes_list = np.array(list(self.chromosome_distribution.keys()))
         chromosomes_weights = np.array(list(self.chromosome_distribution.values()))
         noise = np.random.lognormal(0, 0.3, size=len(chromosomes_weights))
@@ -37,26 +37,23 @@ class Father(BaseGenomeGenerator):
         noisy_weights /= np.sum(noisy_weights)
         synthetic_chromosomes = np.random.choice(chromosomes_list, size=self.total_snps, p=noisy_weights)
 
-        # --- 2. Generación Vectorizada de POSICIONES ---
+        # --- 2. Generación de POSICIONES ---
         pos_stats = pd.DataFrame(self.position_ranges).T
-        # Convertir los nombres de los cromosomas a string para asegurar la coincidencia
         pos_stats.index = pos_stats.index.astype(str)
         synthetic_chromosomes_str = synthetic_chromosomes.astype(str)
         
-        # Convertir a diccionarios para mapeo eficiente sin problemas de índice
         mean_dict = pos_stats['mean'].to_dict()
         std_dict = pos_stats['std'].to_dict()
         min_dict = pos_stats['min'].to_dict()
         max_dict = pos_stats['max'].to_dict()
         
-        # Crear Series temporales y usar map con diccionarios
         chrom_series = pd.Series(synthetic_chromosomes_str)
         means = chrom_series.map(mean_dict).to_numpy()
         stds = chrom_series.map(std_dict).to_numpy()
         mins = chrom_series.map(min_dict).to_numpy(dtype=np.int64)
         maxs = chrom_series.map(max_dict).to_numpy(dtype=np.int64)
 
-        # Aplicar estrategias de variación de forma vectorizada
+        # Aplicar estrategias 
         strategies = np.random.rand(self.total_snps)
         
         mask1 = strategies < 0.33
@@ -84,7 +81,7 @@ class Father(BaseGenomeGenerator):
         synthetic_positions[noise_mask] += additional_noise
         np.clip(synthetic_positions, mins, maxs, out=synthetic_positions)
 
-        # --- 3. Generación Vectorizada de GENOTIPOS ---
+        # --- 3. Generación de GENOTIPOS ---
         genotypes_list = np.array(list(self.genotype_distribution.keys()))
         genotypes_weights = np.array(list(self.genotype_distribution.values()))
         noise = np.random.gamma(2, 0.3, size=len(genotypes_weights)) + 0.4
@@ -92,7 +89,7 @@ class Father(BaseGenomeGenerator):
         noisy_weights /= np.sum(noisy_weights)
         synthetic_genotypes = np.random.choice(genotypes_list, size=self.total_snps, p=noisy_weights)
 
-        # --- 4. Aplicación Vectorizada de MUTACIONES ---
+        # --- 4. Aplicación de MUTACIONES ---
         mutation_mask = np.random.rand(self.total_snps) < mutation_rate
         num_mutations = np.sum(mutation_mask)
         
