@@ -31,44 +31,49 @@ class Child(BaseGenomeGenerator):
 
   
 
-    def generate_with_interpolation(self,synthetic_chromosomes):
-            from scipy.interpolate import interp1d
-            synthetic_chromosomes_str = synthetic_chromosomes.astype(str)
-            synthetic_positions = []
+    def generate_with_interpolation(self, synthetic_chromosomes, profile):
+        """Genera posiciones sintéticas usando interpolación basada en la distribución real del perfil específico."""
+        from scipy.interpolate import interp1d
+        synthetic_chromosomes_str = synthetic_chromosomes.astype(str)
+        synthetic_positions = []
+        
+        for chrom in np.unique(synthetic_chromosomes_str):
+            # Posiciones reales ordenadas para este cromosoma desde el perfil específico
+            real_positions = np.sort(profile.genome_df[profile.genome_df['chromosome'].astype(str) == chrom]['position'].values)
             
-            for chrom in np.unique(synthetic_chromosomes_str):
-                # Posiciones reales ordenadas para este cromosoma
-                real_positions = np.sort(self.genome_df[self.genome_df['chromosome'].astype(str) == chrom]['position'].values)
-                
-                if len(real_positions) < 2:
-                    count = (synthetic_chromosomes_str == chrom).sum()
-                    samples = np.random.choice(real_positions, count, replace=True)
-                    synthetic_positions.extend(samples)
-                    continue
-                
-                # Creamos función de distribución acumulativa empírica
-                ecdf = np.arange(len(real_positions)) / len(real_positions)
-                
-                # Interpolamos la CDF inversa
-                inverse_cdf = interp1d(ecdf, real_positions, 
-                                    bounds_error=False, 
-                                    fill_value=(real_positions[0], real_positions[-1]))
-                
-                # Generamos muestras uniformes
+            if len(real_positions) < 2:
                 count = (synthetic_chromosomes_str == chrom).sum()
-                uniform_samples = np.random.uniform(0, 1, count)
-                
-                # Aplicamos la CDF inversa
-                samples = inverse_cdf(uniform_samples).astype(int)
-                
-                # Pequeña perturbación
-                perturbation = np.random.randint(-1000, 1000, count)  # ±1000 bases
-                perturbed_samples = samples + perturbation
-                perturbed_samples = np.maximum(perturbed_samples, 1)
-                
-                synthetic_positions.extend(perturbed_samples)
+                if len(real_positions) == 0:
+                    # Si no hay posiciones para este cromosoma, generar valores aleatorios
+                    samples = np.random.randint(1, 250000000, count)
+                else:
+                    samples = np.random.choice(real_positions, count, replace=True)
+                synthetic_positions.extend(samples)
+                continue
             
-            return np.array(synthetic_positions)
+            # Creamos función de distribución acumulativa empírica
+            ecdf = np.arange(len(real_positions)) / len(real_positions)
+            
+            # Interpolamos la CDF inversa
+            inverse_cdf = interp1d(ecdf, real_positions, 
+                                bounds_error=False, 
+                                fill_value=(real_positions[0], real_positions[-1]))
+            
+            # Generamos muestras uniformes
+            count = (synthetic_chromosomes_str == chrom).sum()
+            uniform_samples = np.random.uniform(0, 1, count)
+            
+            # Aplicamos la CDF inversa
+            samples = inverse_cdf(uniform_samples).astype(int)
+            
+            # Pequeña perturbación
+            perturbation = np.random.randint(-1000, 1000, count)  # ±1000 bases
+            perturbed_samples = samples + perturbation
+            perturbed_samples = np.maximum(perturbed_samples, 1)
+            
+            synthetic_positions.extend(perturbed_samples)
+        
+        return np.array(synthetic_positions)
         
     def generate(self, family_ids: tuple):
         """
@@ -106,8 +111,7 @@ class Child(BaseGenomeGenerator):
         synthetic_chromosomes = np.random.choice(chromosomes_list, size=profile.total_snps, p=noisy_weights)
 
         # --- 2. Generación Vectorizada de POSICIONES ---
-        
-        synthetic_positions = self.generate_with_interpolation(synthetic_chromosomes)
+        synthetic_positions = self.generate_with_interpolation(synthetic_chromosomes, profile)
         
         # --- 3. Generación Vectorizada de GENOTIPOS ---
         genotypes_list = np.array(list(profile.genotype_distribution.keys()))
