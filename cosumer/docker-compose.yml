@@ -1,167 +1,278 @@
-
 services:
   # ==================== HDFS NAMENODE ====================
+  
   namenode:
     image: bde2020/hadoop-namenode:2.0.0-hadoop3.2.1-java8
-    container_name: namenode
-    restart: always
-    ports:
-      - "9870:9870"  
-      - "9000:9000"  
+    container_name: hdfs-namenode
+    hostname: namenode
     environment:
-      - CLUSTER_NAME=genomic_cluster
+      - CLUSTER_NAME=genomic-cluster
       - CORE_CONF_fs_defaultFS=hdfs://namenode:9000
       - CORE_CONF_hadoop_http_staticuser_user=root
-      - CORE_CONF_hadoop_proxyuser_hue_hosts=*
-      - CORE_CONF_hadoop_proxyuser_hue_groups=*
       - HDFS_CONF_dfs_webhdfs_enabled=true
       - HDFS_CONF_dfs_permissions_enabled=false
-      - HDFS_CONF_dfs_replication=2
-    networks:
-      - hadoop
-      - producer_default
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9870/"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-
-  # ==================== HDFS DATANODEs ====================
-  datanode1:
-    image: bde2020/hadoop-datanode:2.0.0-hadoop3.2.1-java8
-    container_name: datanode1
-    restart: always
-    environment:
-      - CORE_CONF_fs_defaultFS=hdfs://namenode:9000
-      - CORE_CONF_hadoop_http_staticuser_user=root
-      - HDFS_CONF_dfs_datanode_data_dir=file:///hadoop/dfs/data
-    depends_on:
-      - namenode
-    networks:
-      - hadoop
-      - producer_default
-
-  datanode2:
-    image: bde2020/hadoop-datanode:2.0.0-hadoop3.2.1-java8
-    container_name: datanode2
-    restart: always
-    environment:
-      - CORE_CONF_fs_defaultFS=hdfs://namenode:9000
-      - CORE_CONF_hadoop_http_staticuser_user=root
-      - HDFS_CONF_dfs_datanode_data_dir=file:///hadoop/dfs/data
-    depends_on:
-      - namenode
-    networks:
-      - hadoop
-      - producer_default
-
-
-  # ==================== YARN RESOURCE MANAGER ====================
-  resourcemanager:
-    image: bde2020/hadoop-resourcemanager:2.0.0-hadoop3.2.1-java8
-    container_name: resourcemanager
-    restart: always
+      - HDFS_CONF_dfs_replication=1
     ports:
-      - "8088:8088"  
-    environment:
-      - CORE_CONF_fs_defaultFS=hdfs://namenode:9000
-      - YARN_CONF_yarn_resourcemanager_hostname=resourcemanager
-      - YARN_CONF_yarn_resourcemanager_address=resourcemanager:8032
-      - YARN_CONF_yarn_resourcemanager_scheduler_address=resourcemanager:8030
-      - YARN_CONF_yarn_resourcemanager_resource__tracker_address=resourcemanager:8031
-    depends_on:
-      - namenode
-      - datanode1
-      - datanode2
+      - "9870:9870"  # HDFS Web UI
+      - "9000:9000"  # HDFS Port
+    volumes:
+      - namenode_data:/hadoop/dfs/name
     networks:
-      - hadoop
       - producer_default
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8088/"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-
-  # ==================== YARN NODE MANAGER ====================
-  nodemanager1:
-    image: bde2020/hadoop-nodemanager:2.0.0-hadoop3.2.1-java8
-    container_name: nodemanager1
-    restart: always
-    environment:
-      - CORE_CONF_fs_defaultFS=hdfs://namenode:9000
-      - YARN_CONF_yarn_resourcemanager_hostname=resourcemanager
-      - YARN_CONF_yarn_nodemanager_aux__services=mapreduce_shuffle
-      - YARN_CONF_yarn_nodemanager_resource_memory__mb=4096
-      - YARN_CONF_yarn_nodemanager_resource_cpu__vcores=2
-    depends_on:
-      - resourcemanager
-    networks:
       - hadoop
-      - producer_default
-
-  nodemanager2:
-    image: bde2020/hadoop-nodemanager:2.0.0-hadoop3.2.1-java8
-    container_name: nodemanager2
-    restart: always
-    environment:
-      - CORE_CONF_fs_defaultFS=hdfs://namenode:9000
-      - YARN_CONF_yarn_resourcemanager_hostname=resourcemanager
-      - YARN_CONF_yarn_nodemanager_aux__services=mapreduce_shuffle
-      - YARN_CONF_yarn_nodemanager_resource_memory__mb=4096
-      - YARN_CONF_yarn_nodemanager_resource_cpu__vcores=2
-    depends_on:
-      - resourcemanager
-    networks:
-      - hadoop
-      - producer_default
-
-  historyserver:
-    image: bde2020/hadoop-historyserver:2.0.0-hadoop3.2.1-java8
-    container_name: historyserver
-    restart: always
-    ports:
-      - "8188:8188"  
-    environment:
-      - CORE_CONF_fs_defaultFS=hdfs://namenode:9000
-    depends_on:
-      - namenode
-      - datanode1
-    networks:
-      - hadoop
-      - producer_default
-
-  genomic-consumer:
-    build: .
-    container_name: genomic-consumer
-    hostname: genomic-consumer
-    environment:
-      KAFKA_BROKER_URL: kafka:9092
-      PYTHONUNBUFFERED: 1
-      HDFS_NAMENODE_URL: hdfs://namenode:9000
-      HDFS_USER: root
-      PYSPARK_PYTHON: python3
-      PYSPARK_DRIVER_PYTHON: python3
-    ports:
-      - "4040:4040"  # Spark UI
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9870"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # ==================== HDFS DATANODE ====================
+  
+  datanode:
+    image: bde2020/hadoop-datanode:2.0.0-hadoop3.2.1-java8
+    container_name: hdfs-datanode
+    hostname: datanode
+    environment:
+      - CORE_CONF_fs_defaultFS=hdfs://namenode:9000
+      - CORE_CONF_hadoop_http_staticuser_user=root
+      - HDFS_CONF_dfs_webhdfs_enabled=true
+      - HDFS_CONF_dfs_permissions_enabled=false
+    ports:
+      - "9864:9864"  # DataNode Web UI
+    volumes:
+      - datanode_data:/hadoop/dfs/data
+    networks:
+      - producer_default
+      - hadoop
     depends_on:
       namenode:
         condition: service_healthy
-      resourcemanager:
-        condition: service_healthy
-      datanode1:
-        condition: service_started
-      datanode2:
-        condition: service_started
+    restart: unless-stopped
+
+  # ==================== MONGODB ====================
+  
+  mongodb:
+    image: mongo
+    container_name: genomic-mongodb
+    hostname: mongodb
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: genomic2025
+      MONGO_INITDB_DATABASE: genomic_db
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
     networks:
       - producer_default
       - hadoop
     healthcheck:
-      test: ["CMD", "python3", "-c", "import sys; sys.exit(0)"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # ==================== KAFKA UI ====================
+  
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: kafka-ui
+    hostname: kafka-ui
+    environment:
+      KAFKA_CLUSTERS_0_NAME: genomic-cluster
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
+      DYNAMIC_CONFIG_ENABLED: 'true'
+    ports:
+      - "8090:8080"
+    networks:
+      - producer_default
+      - hadoop
+    depends_on:
+      - mongodb
+    restart: unless-stopped
+
+  # ==================== SPARK CLUSTER ====================
+  
+  spark-master:
+    image: apache/spark:latest
+    container_name: spark-master
+    hostname: spark-master
+    user: root
+    environment:
+      - SPARK_NO_DAEMONIZE=true
+      - SPARK_MASTER_HOST=spark-master
+      - SPARK_MASTER_PORT=7077
+      - SPARK_MASTER_WEBUI_PORT=8080
+      - KAFKA_BROKER_URL=kafka:9092
+      - MONGODB_URI=mongodb://admin:genomic2025@mongodb:27017/genomic_db?authSource=admin
+      - PYTHONUNBUFFERED=1
+    command: >
+      bash -c "/opt/spark/bin/spark-class org.apache.spark.deploy.master.Master &
+      sleep 10 &&
+      pip install --quiet pymongo pandas &&
+      /opt/spark/bin/spark-submit
+      --master spark://spark-master:7077
+      --deploy-mode client
+      --driver-memory 1g
+      --executor-memory 2g
+      --executor-cores 2
+      --total-executor-cores 4
+      --conf spark.driver.host=spark-master
+      --conf spark.driver.bindAddress=0.0.0.0
+      --conf spark.executor.instances=2
+      --conf spark.dynamicAllocation.enabled=false
+      --conf spark.eventLog.enabled=true
+      --conf spark.eventLog.dir=/tmp/spark-events
+      --packages org.apache.spark:spark-sql-kafka-0-10_2.13:4.0.0-preview2
+      /app/spark_consumer.py"
+    volumes:
+      - ./spark_consumer.py:/app/spark_consumer.py:ro
+      - spark_events:/tmp/spark-events
+    ports:
+      - "8080:8080"  # Spark Master Web UI
+      - "7077:7077"  # Spark Master Port
+      - "4040:4040"  # Spark Driver UI
+    networks:
+      - producer_default
+      - hadoop
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      namenode:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    restart: unless-stopped
+
+  spark-worker-1:
+    image: apache/spark:latest
+    container_name: spark-worker-1
+    hostname: spark-worker-1
+    command: /opt/spark/bin/spark-class org.apache.spark.deploy.worker.Worker spark://spark-master:7077
+    environment:
+      - SPARK_NO_DAEMONIZE=true
+      - SPARK_WORKER_MEMORY=3G
+      - SPARK_WORKER_CORES=2
+      - SPARK_WORKER_WEBUI_PORT=8081
+      - SPARK_MASTER=spark://spark-master:7077
+    ports:
+      - "8081:8081"  # Worker 1 Web UI
+    depends_on:
+      spark-master:
+        condition: service_healthy
+    networks:
+      - producer_default
+      - hadoop
+    restart: unless-stopped
+
+  spark-worker-2:
+    image: apache/spark:latest
+    container_name: spark-worker-2
+    hostname: spark-worker-2
+    command: /opt/spark/bin/spark-class org.apache.spark.deploy.worker.Worker spark://spark-master:7077
+    environment:
+      - SPARK_NO_DAEMONIZE=true
+      - SPARK_WORKER_MEMORY=3G
+      - SPARK_WORKER_CORES=2
+      - SPARK_WORKER_WEBUI_PORT=8082
+      - SPARK_MASTER=spark://spark-master:7077
+    ports:
+      - "8082:8082"  # Worker 2 Web UI
+    depends_on:
+      spark-master:
+        condition: service_healthy
+    networks:
+      - producer_default
+      - hadoop
+    restart: unless-stopped
+
+  # ==================== SPARK HISTORY SERVER ====================
+  
+  spark-history:
+    image: apache/spark:latest
+    container_name: spark-history-server
+    hostname: spark-history
+    command: /opt/spark/bin/spark-class org.apache.spark.deploy.history.HistoryServer
+    environment:
+      - SPARK_NO_DAEMONIZE=true
+      - SPARK_HISTORY_OPTS=-Dspark.history.fs.logDirectory=/tmp/spark-events
+    ports:
+      - "18080:18080"  # History Server Web UI
+    volumes:
+      - spark_events:/tmp/spark-events
+    networks:
+      - producer_default
+      - hadoop
+    depends_on:
+      - spark-master
+    restart: unless-stopped
+
+  # ==================== API ====================
+  
+  api:
+    image: python:3.11-slim
+    container_name: genomic-api
+    hostname: api
+    working_dir: /app
+    command: >
+      bash -c "pip install --quiet -r requirements_api.txt &&
+      uvicorn api:app --host 0.0.0.0 --port 8000 --reload"
+    volumes:
+      - ./api.py:/app/api.py:ro
+      - ./requirements_api.txt:/app/requirements_api.txt:ro
+    ports:
+      - "8000:8000"
+    environment:
+      MONGO_URI: mongodb://admin:genomic2025@mongodb:27017/genomic_db?authSource=admin
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    networks:
+      - producer_default
+      - hadoop
+    restart: unless-stopped
+
+  # ==================== DASHBOARD ====================
+  
+  dashboard:
+    image: python:3.11-slim
+    container_name: genomic-dashboard
+    hostname: dashboard
+    working_dir: /app
+    command: >
+      bash -c "pip install --quiet -r requirements_dashboard.txt &&
+      python dashboard.py"
+    volumes:
+      - ./dashboard.py:/app/dashboard.py:ro
+      - ./requirements_dashboard.txt:/app/requirements_dashboard.txt:ro
+    ports:
+      - "5000:5000"
+    environment:
+      MONGO_URI: mongodb://admin:genomic2025@mongodb:27017/genomic_db?authSource=admin
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    networks:
+      - producer_default
+      - hadoop
+    restart: unless-stopped
+
+volumes:
+  namenode_data:
+    driver: local
+  datanode_data:
+    driver: local
+  mongodb_data:
+    driver: local
+  spark_events:
+    driver: local
 
 networks:
   hadoop:

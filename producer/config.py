@@ -75,17 +75,16 @@ class Settings:
     def display_config(self):
         """Muestra la configuración actual."""
         print("\n" + "="*80)
-        print("⚙️  CONFIGURACIÓN DEL PRODUCTOR")
+        print(". CONFIGURACIÓN DEL PRODUCTOR")
         print("="*80)
-        print(f"📡 Kafka Broker: {self.KAFKA_BROKER_URL}")
-        print(f"🆔 Client ID: {self.KAFKA_CLIENT_ID}")
-        print(f"📤 Topics: {self.KAFKA_TOPIC_FATHERS}, {self.KAFKA_TOPIC_MOTHERS}, {self.KAFKA_TOPIC_CHILDREN}")
-        print(f"🧵 Hilos: {self.NUM_THREADS}")
-        print(f"📦 Batch Size: {self.SEND_BATCH_SIZE}")
-        print(f"📊 Log Interval: {self.LOG_INTERVAL:,}")
-        print(f"🗂️  Partición: {self.PARTITION_NUMBER}")
+        print(f"Kafka Broker: {self.KAFKA_BROKER_URL}")
+        print(f"Client ID: {self.KAFKA_CLIENT_ID}")
+        print(f"Topics: {self.KAFKA_TOPIC_FATHERS}, {self.KAFKA_TOPIC_MOTHERS}, {self.KAFKA_TOPIC_CHILDREN}")
+        print(f"Hilos: {self.NUM_THREADS}")
+        print(f"Batch Size: {self.SEND_BATCH_SIZE}")
+        print(f"Log Interval: {self.LOG_INTERVAL:,}")
+        print(f"Partición: {self.PARTITION_NUMBER}")
         print("="*80 + "\n")
 
 
-# Instancia global de configuración
 settings = Settings()
