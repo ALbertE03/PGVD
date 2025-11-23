@@ -51,30 +51,6 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
-  # ==================== MONGODB ====================
-  
-  mongodb:
-    image: mongo
-    container_name: genomic-mongodb
-    hostname: mongodb
-    environment:
-      MONGO_INITDB_ROOT_USERNAME: admin
-      MONGO_INITDB_ROOT_PASSWORD: genomic2025
-      MONGO_INITDB_DATABASE: genomic_db
-    ports:
-      - "27017:27017"
-    volumes:
-      - mongodb_data:/data/db
-    networks:
-      - producer_default
-      - hadoop
-    healthcheck:
-      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    restart: unless-stopped
-
   # ==================== KAFKA UI ====================
   
   kafka-ui:
@@ -90,59 +66,74 @@ services:
     networks:
       - producer_default
       - hadoop
-    depends_on:
-      - mongodb
+    restart: unless-stopped
+
+  # ==================== ZOOKEEPER FOR SPARK HA ====================
+  
+  zookeeper:
+    image: zookeeper:3.7
+    container_name: spark-zookeeper
+    hostname: zookeeper
+    ports:
+      - "2181:2181"
+    environment:
+      ZOO_MY_ID: 1
+    networks:
+      - hadoop
     restart: unless-stopped
 
   # ==================== SPARK CLUSTER ====================
   
-  spark-master:
+  spark-master-1:
     image: apache/spark:latest
-    container_name: spark-master
-    hostname: spark-master
+    container_name: spark-master-1
+    hostname: spark-master-1
     user: root
     environment:
       - SPARK_NO_DAEMONIZE=true
-      - SPARK_MASTER_HOST=spark-master
+      - SPARK_MASTER_HOST=spark-master-1
       - SPARK_MASTER_PORT=7077
       - SPARK_MASTER_WEBUI_PORT=8080
-      - KAFKA_BROKER_URL=kafka:9092
-      - MONGODB_URI=mongodb://admin:genomic2025@mongodb:27017/genomic_db?authSource=admin
-      - PYTHONUNBUFFERED=1
-    command: >
-      bash -c "/opt/spark/bin/spark-class org.apache.spark.deploy.master.Master &
-      sleep 10 &&
-      pip install --quiet pymongo pandas &&
-      /opt/spark/bin/spark-submit
-      --master spark://spark-master:7077
-      --deploy-mode client
-      --driver-memory 1g
-      --executor-memory 2g
-      --executor-cores 2
-      --total-executor-cores 4
-      --conf spark.driver.host=spark-master
-      --conf spark.driver.bindAddress=0.0.0.0
-      --conf spark.executor.instances=2
-      --conf spark.dynamicAllocation.enabled=false
-      --conf spark.eventLog.enabled=true
-      --conf spark.eventLog.dir=/tmp/spark-events
-      --packages org.apache.spark:spark-sql-kafka-0-10_2.13:4.0.0-preview2
-      /app/spark_consumer.py"
-    volumes:
-      - ./spark_consumer.py:/app/spark_consumer.py:ro
-      - spark_events:/tmp/spark-events
+      - SPARK_DAEMON_JAVA_OPTS=-Dspark.deploy.recoveryMode=ZOOKEEPER -Dspark.deploy.zookeeper.url=zookeeper:2181 -Dspark.deploy.zookeeper.dir=/spark
+    command: /opt/spark/bin/spark-class org.apache.spark.deploy.master.Master
     ports:
-      - "8080:8080"  # Spark Master Web UI
-      - "7077:7077"  # Spark Master Port
-      - "4040:4040"  # Spark Driver UI
+      - "8080:8080"  # Spark Master 1 Web UI
+      - "7077:7077"  # Spark Master 1 Port
     networks:
       - producer_default
       - hadoop
     depends_on:
-      mongodb:
-        condition: service_healthy
-      namenode:
-        condition: service_healthy
+      zookeeper:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    restart: unless-stopped
+
+  spark-master-2:
+    image: apache/spark:latest
+    container_name: spark-master-2
+    hostname: spark-master-2
+    user: root
+    environment:
+      - SPARK_NO_DAEMONIZE=true
+      - SPARK_MASTER_HOST=spark-master-2
+      - SPARK_MASTER_PORT=7077
+      - SPARK_MASTER_WEBUI_PORT=8080
+      - SPARK_DAEMON_JAVA_OPTS=-Dspark.deploy.recoveryMode=ZOOKEEPER -Dspark.deploy.zookeeper.url=zookeeper:2181 -Dspark.deploy.zookeeper.dir=/spark
+    command: /opt/spark/bin/spark-class org.apache.spark.deploy.master.Master
+    ports:
+      - "8083:8080"  # Spark Master 2 Web UI
+      - "7078:7077"  # Spark Master 2 Port
+    networks:
+      - producer_default
+      - hadoop
+    depends_on:
+      zookeeper:
+        condition: service_started
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080"]
       interval: 10s
@@ -155,17 +146,18 @@ services:
     image: apache/spark:latest
     container_name: spark-worker-1
     hostname: spark-worker-1
-    command: /opt/spark/bin/spark-class org.apache.spark.deploy.worker.Worker spark://spark-master:7077
+    command: /opt/spark/bin/spark-class org.apache.spark.deploy.worker.Worker spark://spark-master-1:7077,spark-master-2:7077
     environment:
       - SPARK_NO_DAEMONIZE=true
       - SPARK_WORKER_MEMORY=3G
       - SPARK_WORKER_CORES=2
       - SPARK_WORKER_WEBUI_PORT=8081
-      - SPARK_MASTER=spark://spark-master:7077
     ports:
       - "8081:8081"  # Worker 1 Web UI
     depends_on:
-      spark-master:
+      spark-master-1:
+        condition: service_healthy
+      spark-master-2:
         condition: service_healthy
     networks:
       - producer_default
@@ -176,21 +168,75 @@ services:
     image: apache/spark:latest
     container_name: spark-worker-2
     hostname: spark-worker-2
-    command: /opt/spark/bin/spark-class org.apache.spark.deploy.worker.Worker spark://spark-master:7077
+    command: /opt/spark/bin/spark-class org.apache.spark.deploy.worker.Worker spark://spark-master-1:7077,spark-master-2:7077
     environment:
       - SPARK_NO_DAEMONIZE=true
       - SPARK_WORKER_MEMORY=3G
       - SPARK_WORKER_CORES=2
       - SPARK_WORKER_WEBUI_PORT=8082
-      - SPARK_MASTER=spark://spark-master:7077
     ports:
       - "8082:8082"  # Worker 2 Web UI
     depends_on:
-      spark-master:
+      spark-master-1:
+        condition: service_healthy
+      spark-master-2:
         condition: service_healthy
     networks:
       - producer_default
       - hadoop
+    restart: unless-stopped
+
+  # ==================== SPARK DRIVER (CONSUMER APP) ====================
+  
+  spark-driver:
+    image: apache/spark:latest
+    container_name: spark-driver
+    hostname: spark-driver
+    user: root
+    environment:
+      - KAFKA_BROKER_URL=kafka:9092
+      - MONGODB_URI=mongodb://mongo-primary:27017,mongo-secondary1:27017,mongo-secondary2:27017/genomic_db?replicaSet=rs0
+      - PYTHONUNBUFFERED=1
+      - SPARK_NO_DAEMONIZE=true
+    command: >
+      bash -c "echo '🔧 Installing Python packages...' &&
+      pip install pymongo pandas &&
+      echo 'Packages installed, starting Spark application...' &&
+      /opt/spark/bin/spark-submit
+      --master spark://spark-master-1:7077,spark-master-2:7077
+      --deploy-mode client
+      --driver-memory 1g
+      --executor-memory 2g
+      --executor-cores 2
+      --total-executor-cores 4
+      --conf spark.driver.host=spark-driver
+      --conf spark.driver.bindAddress=0.0.0.0
+      --conf spark.executor.instances=2
+      --conf spark.dynamicAllocation.enabled=false
+      --conf spark.eventLog.enabled=true
+      --conf spark.eventLog.dir=/tmp/spark-events
+      --packages org.apache.spark:spark-sql-kafka-0-10_2.13:4.0.0-preview2
+      /app/spark_consumer.py"
+    volumes:
+      - ./spark_consumer.py:/app/spark_consumer.py:ro
+      - spark_events:/tmp/spark-events
+    ports:
+      - "4040:4040"  # Spark Driver UI
+    networks:
+      - producer_default
+      - hadoop
+      - mongo-cluster
+    depends_on:
+      spark-master-1:
+        condition: service_healthy
+      spark-master-2:
+        condition: service_healthy
+      spark-worker-1:
+        condition: service_started
+      spark-worker-2:
+        condition: service_started
+      namenode:
+        condition: service_healthy
     restart: unless-stopped
 
   # ==================== SPARK HISTORY SERVER ====================
@@ -211,7 +257,7 @@ services:
       - producer_default
       - hadoop
     depends_on:
-      - spark-master
+      - spark-master-1
     restart: unless-stopped
 
   # ==================== API ====================
@@ -230,13 +276,11 @@ services:
     ports:
       - "8000:8000"
     environment:
-      MONGO_URI: mongodb://admin:genomic2025@mongodb:27017/genomic_db?authSource=admin
-    depends_on:
-      mongodb:
-        condition: service_healthy
+      MONGO_URI: mongodb://localhost:27017/?directConnection=true
     networks:
       - producer_default
       - hadoop
+      - mongo-cluster
     restart: unless-stopped
 
   # ==================== DASHBOARD ====================
@@ -255,13 +299,11 @@ services:
     ports:
       - "5000:5000"
     environment:
-      MONGO_URI: mongodb://admin:genomic2025@mongodb:27017/genomic_db?authSource=admin
-    depends_on:
-      mongodb:
-        condition: service_healthy
+      MONGO_URI: mongodb://localhost:27017/?directConnection=true
     networks:
       - producer_default
       - hadoop
+      - mongo-cluster
     restart: unless-stopped
 
 volumes:
@@ -269,14 +311,16 @@ volumes:
     driver: local
   datanode_data:
     driver: local
-  mongodb_data:
-    driver: local
   spark_events:
     driver: local
 
 networks:
+  mongo-cluster:
+    name: mongo-cluster
+    external: true
   hadoop:
     driver: bridge
   producer_default:
     name: producer_producer_default
     external: true
+  

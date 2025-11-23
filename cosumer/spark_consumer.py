@@ -10,11 +10,11 @@ import os
 
 # Configuración
 KAFKA_BROKER = os.getenv('KAFKA_BROKER_URL', 'kafka:9092')
-MONGODB_URI = os.getenv('MONGODB_URI', 'mongodb://admin:genomic2025@mongodb:27017/genomic_db?authSource=admin')
+MONGODB_URI = os.getenv('MONGODB_URI', 'mongodb://mongo-primary:27017,mongo-secondary1:27017,mongo-secondary2:27017/genomic_db?replicaSet=rs0')
 SPARK_MASTER = os.getenv('SPARK_MASTER_URL', 'spark://spark-master:7077')
 HDFS_NAMENODE = os.getenv('HDFS_NAMENODE_URL', 'hdfs://namenode:9000')
 
-# Definir esquema para los SNP messages (todos los topics tienen la misma estructura)
+# Definir esquema para los SNP messages 
 snp_data_schema = StructType([
     StructField("chromosome", StringType(), True),
     StructField("position", IntegerType(), True),
@@ -34,17 +34,23 @@ snp_schema = StructType([
 
 def create_spark_session():
     """Crea y configura la sesión de Spark"""
-    print(f"🚀 Conectando al cluster Spark en: {SPARK_MASTER}")
+    print(f"🚀 Conectando al cluster Spark...")
     
     spark = SparkSession.builder \
         .appName("GenomicDataConsumer") \
-        .master(SPARK_MASTER) \
         .config("spark.streaming.stopGracefullyOnShutdown", "true") \
         .config("spark.sql.streaming.schemaInference", "true") \
         .config("spark.mongodb.output.uri", MONGODB_URI) \
         .getOrCreate()
     
-    spark.sparkContext.setLogLevel("WARN")
+    # Configurar nivel de logging
+    spark.sparkContext.setLogLevel("ERROR")
+    
+    # Suprimir warnings específicos de Kafka
+    import logging
+    logging.getLogger("org.apache.kafka.clients.admin.KafkaAdminClient").setLevel(logging.ERROR)
+    logging.getLogger("org.apache.spark.sql.execution.streaming").setLevel(logging.ERROR)
+    
     print("✅ Sesión de Spark creada exitosamente")
     return spark
 
@@ -74,20 +80,23 @@ def write_to_mongodb(df, collection_name):
     
     def write_to_mongo(batch_df, batch_id):
         """Escribe cada batch a MongoDB"""
-        try:
-            client = MongoClient(MONGODB_URI)
-            db = client.genomic_db
-            collection = db[collection_name]
+        if batch_df.isEmpty():
+            return
             
+        try:
             # Convertir el DataFrame a lista de diccionarios
-            records = batch_df.toPandas().to_dict('records')
+            records = [row.asDict() for row in batch_df.collect()]
             if records:
+                client = MongoClient(MONGODB_URI)
+                db = client.genomic_db
+                collection = db[collection_name]
                 collection.insert_many(records)
-                print(f"📝 MongoDB: Insertados {len(records)} registros en {collection_name}")
+                print(f"📝 MongoDB [{collection_name}]: Insertados {len(records)} registros (Batch {batch_id})")
+                client.close()
         except Exception as e:
-            print(f"❌ Error escribiendo a MongoDB: {e}")
-        finally:
-            client.close()
+            print(f"❌ Error escribiendo a MongoDB [{collection_name}]: {e}")
+            import traceback
+            traceback.print_exc()
     
     query = df.writeStream \
         .foreachBatch(write_to_mongo) \
@@ -110,15 +119,6 @@ def write_to_hdfs(df, path_name):
     print(f"💾 HDFS: Guardando en {hdfs_path}")
     return query
 
-def write_to_console(df, topic_name):
-    """Escribe el stream a consola para debugging"""
-    query = df.writeStream \
-        .outputMode("append") \
-        .format("console") \
-        .option("truncate", "false") \
-        .start()
-    
-    return query
 
 def main():
     """Función principal que inicia el streaming"""
@@ -152,17 +152,11 @@ def main():
         hdfs_mothers = write_to_hdfs(mothers_df, "mothers")
         hdfs_children = write_to_hdfs(children_df, "children")
         
-        # Mostrar en consola
-        print("\n📺 Configurando salida a consola...")
-        console_fathers = write_to_console(fathers_df, "fathers")
-        console_mothers = write_to_console(mothers_df, "mothers")
-        console_children = write_to_console(children_df, "children")
-        
         print("\n" + "=" * 80)
         print("✅ CONSUMIDOR INICIADO - Procesando datos en tiempo real...")
         print("=" * 80)
         print(f"\n🔗 Kafka Broker: {KAFKA_BROKER}")
-        print(f"🔗 MongoDB: {MONGODB_URI.split('@')[1].split('/')[0]}")
+        print(f"🔗 MongoDB: {MONGODB_URI.replace('mongodb://', '')}")
         print(f"🔗 HDFS: {HDFS_NAMENODE}")
         print(f"🔗 Spark Master: {SPARK_MASTER}")
         print("\n💡 Presiona Ctrl+C para detener el consumidor\n")
