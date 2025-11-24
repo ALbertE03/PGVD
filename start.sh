@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Iniciar MongoDB replica set
-cd /Users/alberto/Desktop/PGVD && docker-compose -f docker-compose.mongo.yml up -d
+cd /Users/alberto/Desktop/PGVD/cosumer && docker-compose -f docker-compose.mongo.yml up -d
 
 # Esperar a que MongoDB esté listo
 echo "⏳ Esperando a que MongoDB inicie..."
