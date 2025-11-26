@@ -146,7 +146,8 @@ services:
     image: apache/spark:latest
     container_name: spark-worker-1
     hostname: spark-worker-1
-    command: /opt/spark/bin/spark-class org.apache.spark.deploy.worker.Worker spark://spark-master-1:7077,spark-master-2:7077
+    user: root
+    command: bash -c "pip install --quiet requests && /opt/spark/bin/spark-class org.apache.spark.deploy.worker.Worker spark://spark-master-1:7077,spark-master-2:7077"
     environment:
       - SPARK_NO_DAEMONIZE=true
       - SPARK_WORKER_MEMORY=3G
@@ -168,10 +169,11 @@ services:
     image: apache/spark:latest
     container_name: spark-worker-2
     hostname: spark-worker-2
-    command: /opt/spark/bin/spark-class org.apache.spark.deploy.worker.Worker spark://spark-master-1:7077,spark-master-2:7077
+    user: root
+    command: bash -c "pip install --quiet requests && /opt/spark/bin/spark-class org.apache.spark.deploy.worker.Worker spark://spark-master-1:7077,spark-master-2:7077"
     environment:
       - SPARK_NO_DAEMONIZE=true
-      - SPARK_WORKER_MEMORY=3G
+      - SPARK_WORKER_MEMORY=4G
       - SPARK_WORKER_CORES=2
       - SPARK_WORKER_WEBUI_PORT=8082
     ports:
@@ -186,7 +188,7 @@ services:
       - hadoop
     restart: unless-stopped
 
-  # ==================== SPARK DRIVER (CONSUMER APP) ====================
+  # ==================== SPARK DRIVER ====================
   
   spark-driver:
     image: apache/spark:latest
@@ -195,12 +197,11 @@ services:
     user: root
     environment:
       - KAFKA_BROKER_URL=kafka:9092
-      - MONGODB_URI=mongodb://mongo-primary:27017,mongo-secondary1:27017,mongo-secondary2:27017/genomic_db?replicaSet=rs0
       - PYTHONUNBUFFERED=1
       - SPARK_NO_DAEMONIZE=true
     command: >
       bash -c "echo '🔧 Installing Python packages...' &&
-      pip install pymongo pandas &&
+      pip install pandas requests &&
       echo 'Packages installed, starting Spark application...' &&
       /opt/spark/bin/spark-submit
       --master spark://spark-master-1:7077,spark-master-2:7077
@@ -213,19 +214,15 @@ services:
       --conf spark.driver.bindAddress=0.0.0.0
       --conf spark.executor.instances=2
       --conf spark.dynamicAllocation.enabled=false
-      --conf spark.eventLog.enabled=true
-      --conf spark.eventLog.dir=/tmp/spark-events
       --packages org.apache.spark:spark-sql-kafka-0-10_2.13:4.0.0-preview2
       /app/spark_consumer.py"
     volumes:
       - ./spark_consumer.py:/app/spark_consumer.py:ro
-      - spark_events:/tmp/spark-events
     ports:
       - "4040:4040"  # Spark Driver UI
     networks:
       - producer_default
       - hadoop
-      - mongo-cluster
     depends_on:
       spark-master-1:
         condition: service_healthy
@@ -237,51 +234,9 @@ services:
         condition: service_started
       namenode:
         condition: service_healthy
-    restart: unless-stopped
-
-  # ==================== SPARK HISTORY SERVER ====================
-  
-  spark-history:
-    image: apache/spark:latest
-    container_name: spark-history-server
-    hostname: spark-history
-    command: /opt/spark/bin/spark-class org.apache.spark.deploy.history.HistoryServer
-    environment:
-      - SPARK_NO_DAEMONIZE=true
-      - SPARK_HISTORY_OPTS=-Dspark.history.fs.logDirectory=/tmp/spark-events
-    ports:
-      - "18080:18080"  # History Server Web UI
-    volumes:
-      - spark_events:/tmp/spark-events
-    networks:
-      - producer_default
-      - hadoop
-    depends_on:
-      - spark-master-1
-    restart: unless-stopped
-
-  # ==================== API ====================
-  
-  api:
-    image: python:3.11-slim
-    container_name: genomic-api
-    hostname: api
-    working_dir: /app
-    command: >
-      bash -c "pip install --quiet -r requirements_api.txt &&
-      uvicorn api:app --host 0.0.0.0 --port 8000 --reload"
-    volumes:
-      - ./api.py:/app/api.py:ro
-      - ./requirements_api.txt:/app/requirements_api.txt:ro
-    ports:
-      - "8000:8000"
-    environment:
-      MONGO_URI: mongodb://localhost:27017/?directConnection=true
-    networks:
-      - producer_default
-      - hadoop
-      - mongo-cluster
-    restart: unless-stopped
+      dashboard:
+        condition: service_started
+    restart: always
 
   # ==================== DASHBOARD ====================
   
@@ -292,18 +247,15 @@ services:
     working_dir: /app
     command: >
       bash -c "pip install --quiet -r requirements_dashboard.txt &&
-      python dashboard.py"
+      python dashboard/dashboard_advanced.py"
     volumes:
-      - ./dashboard.py:/app/dashboard.py:ro
+      - ./dashboard:/app/dashboard:ro
       - ./requirements_dashboard.txt:/app/requirements_dashboard.txt:ro
     ports:
       - "5000:5000"
-    environment:
-      MONGO_URI: mongodb://localhost:27017/?directConnection=true
     networks:
       - producer_default
       - hadoop
-      - mongo-cluster
     restart: unless-stopped
 
 volumes:
@@ -311,13 +263,8 @@ volumes:
     driver: local
   datanode_data:
     driver: local
-  spark_events:
-    driver: local
 
 networks:
-  mongo-cluster:
-    name: mongo-cluster
-    external: true
   hadoop:
     driver: bridge
   producer_default:

@@ -1,17 +1,20 @@
 #!/usr/bin/env python3
 """
-Spark Streaming Consumer - Lee continuamente de Kafka
+Spark Streaming Consumer - Lee de Kafka, calcula métricas y escribe en HDFS
 """
 
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import from_json, col, current_timestamp
-from pyspark.sql.types import StructType, StructField, StringType, IntegerType, ArrayType
+from pyspark.sql.functions import (
+    from_json, col, current_timestamp, count, avg, 
+    min as spark_min, max as spark_max, window
+)
+from pyspark.sql.types import StructType, StructField, StringType, IntegerType
+import requests
 import os
 
 # Configuración
 KAFKA_BROKER = os.getenv('KAFKA_BROKER_URL', 'kafka:9092')
-MONGODB_URI = os.getenv('MONGODB_URI', 'mongodb://mongo-primary:27017,mongo-secondary1:27017,mongo-secondary2:27017/genomic_db?replicaSet=rs0')
-SPARK_MASTER = os.getenv('SPARK_MASTER_URL', 'spark://spark-master:7077')
+DASHBOARD_URL = os.getenv('DASHBOARD_URL', 'http://dashboard:5000')
 HDFS_NAMENODE = os.getenv('HDFS_NAMENODE_URL', 'hdfs://namenode:9000')
 
 # Definir esquema para los SNP messages 
@@ -40,7 +43,10 @@ def create_spark_session():
         .appName("GenomicDataConsumer") \
         .config("spark.streaming.stopGracefullyOnShutdown", "true") \
         .config("spark.sql.streaming.schemaInference", "true") \
-        .config("spark.mongodb.output.uri", MONGODB_URI) \
+        .config("spark.sql.shuffle.partitions", "8") \
+        .config("spark.default.parallelism", "8") \
+        .config("spark.sql.adaptive.enabled", "true") \
+        .config("spark.sql.adaptive.coalescePartitions.enabled", "true") \
         .getOrCreate()
     
     # Configurar nivel de logging
@@ -74,46 +80,50 @@ def read_kafka_stream(spark, topic, schema):
     
     return parsed_df
 
-def write_to_mongodb(df, collection_name):
-    """Escribe el stream a MongoDB usando foreach para compatibilidad"""
-    from pymongo import MongoClient
+def calculate_and_send_metrics(batch_df, batch_id, member_type):
+    """Calcula métricas del batch y las envía al dashboard - Solo para gráfica de velocidad de procesamiento"""
+    if batch_df.isEmpty():
+        return
     
-    def write_to_mongo(batch_df, batch_id):
-        """Escribe cada batch a MongoDB"""
-        if batch_df.isEmpty():
-            return
+    try:
+        # Solo contamos registros para la gráfica de velocidad
+        total_records = batch_df.count()
+        
+        metrics = {
+            'member_type': member_type,
+            'batch_id': batch_id,
+            'timestamp': str(batch_df.select(current_timestamp()).first()[0]),
+            'total_records': total_records
+        }
+        
+        # Enviar métricas al dashboard
+        response = requests.post(
+            f"{DASHBOARD_URL}/api/metrics",
+            json=metrics,
+            timeout=5
+        )
+        
+        if response.status_code == 200:
+            print(f"📊 [{member_type}] Batch {batch_id}: {total_records} registros procesados")
+        else:
+            print(f"⚠️  Error enviando métricas [{member_type}]: {response.status_code}")
             
-        try:
-            # Convertir el DataFrame a lista de diccionarios
-            records = [row.asDict() for row in batch_df.collect()]
-            if records:
-                client = MongoClient(MONGODB_URI)
-                db = client.genomic_db
-                collection = db[collection_name]
-                collection.insert_many(records)
-                print(f"📝 MongoDB [{collection_name}]: Insertados {len(records)} registros (Batch {batch_id})")
-                client.close()
-        except Exception as e:
-            print(f"❌ Error escribiendo a MongoDB [{collection_name}]: {e}")
-            import traceback
-            traceback.print_exc()
-    
-    query = df.writeStream \
-        .foreachBatch(write_to_mongo) \
-        .option("checkpointLocation", f"/tmp/checkpoint/{collection_name}") \
-        .start()
-    
-    return query
+    except Exception as e:
+        print(f"❌ Error calculando/enviando métricas [{member_type}]: {e}")
+        import traceback
+        traceback.print_exc()
 
 def write_to_hdfs(df, path_name):
     """Escribe el stream a HDFS en formato Parquet"""
     hdfs_path = f"{HDFS_NAMENODE}/genomic_data/{path_name}"
     
+    # Checkpoint en HDFS para recuperación ante fallos del driver
     query = df.writeStream \
         .format("parquet") \
         .option("path", hdfs_path) \
-        .option("checkpointLocation", f"/tmp/checkpoint/hdfs_{path_name}") \
+        .option("checkpointLocation", f"{HDFS_NAMENODE}/checkpoints/hdfs_{path_name}") \
         .outputMode("append") \
+        .trigger(processingTime="1 seconds") \
         .start()
     
     print(f"💾 HDFS: Guardando en {hdfs_path}")
@@ -140,11 +150,36 @@ def main():
         print(f"   - Topic: mothers")
         print(f"   - Topic: children")
         
-        # Escribir a MongoDB
-        print("\n📝 Configurando escritura a MongoDB...")
-        query_fathers = write_to_mongodb(fathers_df, "fathers")
-        query_mothers = write_to_mongodb(mothers_df, "mothers")
-        query_children = write_to_mongodb(children_df, "children")
+        # Configurar procesamiento y envío de métricas
+        print("\n📊 Configurando cálculo de métricas...")
+        
+        def process_fathers(batch_df, batch_id):
+            calculate_and_send_metrics(batch_df, batch_id, "fathers")
+        
+        def process_mothers(batch_df, batch_id):
+            calculate_and_send_metrics(batch_df, batch_id, "mothers")
+        
+        def process_children(batch_df, batch_id):
+            calculate_and_send_metrics(batch_df, batch_id, "children")
+        
+        # Checkpoints en HDFS para recuperación ante fallos
+        query_fathers_metrics = fathers_df.writeStream \
+            .foreachBatch(process_fathers) \
+            .option("checkpointLocation", f"{HDFS_NAMENODE}/checkpoints/fathers_metrics") \
+            .trigger(processingTime="1 second") \
+            .start()
+        
+        query_mothers_metrics = mothers_df.writeStream \
+            .foreachBatch(process_mothers) \
+            .option("checkpointLocation", f"{HDFS_NAMENODE}/checkpoints/mothers_metrics") \
+            .trigger(processingTime="1 second") \
+            .start()
+        
+        query_children_metrics = children_df.writeStream \
+            .foreachBatch(process_children) \
+            .option("checkpointLocation", f"{HDFS_NAMENODE}/checkpoints/children_metrics") \
+            .trigger(processingTime="1 second") \
+            .start()
         
         # Escribir a HDFS
         print("\n💾 Configurando escritura a HDFS...")
@@ -156,10 +191,8 @@ def main():
         print("✅ CONSUMIDOR INICIADO - Procesando datos en tiempo real...")
         print("=" * 80)
         print(f"\n🔗 Kafka Broker: {KAFKA_BROKER}")
-        print(f"🔗 MongoDB: {MONGODB_URI.replace('mongodb://', '')}")
+        print(f"🔗 Dashboard: {DASHBOARD_URL}")
         print(f"🔗 HDFS: {HDFS_NAMENODE}")
-        print(f"🔗 Spark Master: {SPARK_MASTER}")
-        print("\n💡 Presiona Ctrl+C para detener el consumidor\n")
         
         # Esperar a que terminen los queries (streaming continuo)
         spark.streams.awaitAnyTermination()
