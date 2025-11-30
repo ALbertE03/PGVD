@@ -1,8 +1,12 @@
 #!/bin/bash
 
+set -e
+
+# Cargar variables privadas
+source "$(dirname "$0")/.env.sh"
 
 # Iniciar Producer
-cd /Users/alberto/Desktop/PGVD/producer && docker-compose up --scale genomic-producer=2 -d
+cd "$PRODUCER_PATH" && docker-compose up --scale genomic-producer=2 -d
 
 # Iniciar Consumer
-cd /Users/alberto/Desktop/PGVD/cosumer && docker-compose up -d
+cd "$CONSUMER_PATH" && docker-compose up -d
