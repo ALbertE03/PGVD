@@ -1,12 +1,16 @@
 #!/bin/bash
 
+set -e
+
+# Cargar variables privadas
+source "$(dirname "$0")/.env.sh"
+
 echo "🛑 Deteniendo sistema y eliminando volúmenes..."
 echo ""
 
 echo "⏹️  Deteniendo producer..."
-cd /Users/alberto/Desktop/PGVD/producer && docker-compose down -v
+cd "$PRODUCER_PATH" && docker-compose down -v
 
 echo ""
 echo "⏹️  Deteniendo consumer..."
-cd /Users/alberto/Desktop/PGVD/cosumer && docker-compose down -v
-
+cd "$CONSUMER_PATH" && docker-compose down -v
