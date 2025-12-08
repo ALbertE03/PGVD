@@ -1,0 +1,118 @@
+\documentclass[12pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[spanish]{babel}
+\usepackage{graphicx}
+\usepackage{setspace}
+\usepackage{geometry}
+\usepackage{hyperref}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta, positioning, shapes, backgrounds}
+
+
+\geometry{margin=2.5cm}
+
+\begin{document}
+	
+	\begin{titlepage}
+		\centering
+		{\scshape\LARGE Universidad de La Habana \par}
+		\vspace{1cm}
+		{\Large Facultad de Matemática y Computación \par}
+		{\Large Procesamiento de Grandes Volúmenes de Datos \par}
+		\vspace{2.5cm}
+		{\Huge \bfseries Informe Técnico del Proyecto \par}
+		\vspace{0.5cm}
+		{\LARGE \textbf{Sistema Distribuido de Generación y Procesamiento de Datos Genómicos Sintéticos} \par}
+		\vspace{2cm}
+		{\large \textbf{Integrantes:} \par}
+		\vspace{0.5cm}
+		\begin{tabular}{rl}
+			\textbf{Alberto E. Marichal Fonseca} & -- Ciencia de Datos \\[4pt]
+			\textbf{Jabel Resendiz Aguirre} & -- Ciencia de la Computación \\
+		\end{tabular}
+		\vfill
+		{\large \today \par}
+	\end{titlepage}
+	
+	\onehalfspacing
+	
+	\section*{Descripción del proyecto}
+	El presente proyecto implementa un sistema distribuido para la generación, transmisión, almacenamiento y análisis de datos genómicos sintéticos en tiempo real. Su objetivo central es simular un flujo continuo de información genética de familias humanas, enfocándose en los \textbf{Single Nucleotide Polymorphisms (SNPs)}, para evaluar el rendimiento de una infraestructura distribuida basada en Apache Kafka y Hadoop HDFS.
+	
+	
+	\subsection{Objetivo Central}
+	Generar y transmitir datos genómicos sintéticos de manera escalable y persistente, simulando secuencias de SNPs de familias humanas, garantizando la continuidad del flujo y la capacidad de análisis en tiempo real mediante un pipeline distribuido.
+	
+	
+	\subsection{Dataset seleccionado}
+	El proyecto utiliza el \textbf{Family Genome Dataset} disponible públicamente en \textbf{Kaggle}:
+	\href{https://www.kaggle.com/datasets/zusmani/family-genome-dataset}{kaggle.com}.  
+	Este dataset contiene cinco archivos CSV que representan los datos genómicos de una familia completa: \texttt{Father Genome.csv}, \texttt{Mother Genome.csv}, \texttt{Child1 Genome.csv}, \texttt{Child2 Genome.csv} y \texttt{Child3 Genome.csv}.  
+	Cada archivo incluye las siguientes columnas principales:
+	\begin{itemize}
+		\item \textbf{RSID:} identificador único de cada SNP.
+		\item \textbf{Chromosome:} cromosoma donde se encuentra el SNP.
+		\item \textbf{Position:} posición del SNP dentro del cromosoma.
+		\item \textbf{Genotype:} variante genética observada para ese SNP.
+	\end{itemize}
+	Este formato permite asociar los SNPs a cada individuo de la familia y simular herencia genética en el pipeline distribuido.
+	
+	
+\subsection{Justificación del Dataset}
+El \textbf{Family Genome Dataset} es adecuado para nuestro proyecto por las siguientes razones:
+
+\begin{itemize}
+	\item \textbf{Volumen:} Contiene miles de registros de SNPs por individuo y cinco archivos por familia, lo que permite simular \textbf{Grandes Volúmenes de Datos} y probar la escalabilidad de Kafka y HDFS.
+	
+	\item \textbf{Características:} Los atributos clave (\texttt{RSID}, \texttt{Chromosome}, \texttt{Position}, \texttt{Genotype}) permiten generar perfiles genómicos sintéticos realistas y diversificados, manteniendo coherencia familiar.
+	
+	\item \textbf{Pertinencia:} Al incluir datos de cada miembro de la familia, se puede simular herencia genética y transmitir SNPs sintéticos coherentes con distribuciones biológicas plausibles, alineándose con el objetivo central del proyecto.
+\end{itemize}
+
+	\section*{Arquitectura Propuesta}
+	
+	El sistema implementa un pipeline de procesamiento de datos genómicos sintéticos en \textbf{streaming}, que permite generar, transmitir y analizar SNPs en tiempo real. La arquitectura general se describe en la 
+	
+	\begin{figure}[h!]
+		\centering
+		\includegraphics[width=0.8\textwidth]{Diagrama.jpeg}
+		\caption{Arquitectura general del pipeline de procesamiento de datos genómicos sintéticos en streaming.}
+		\label{fig:architecture}
+	\end{figure}
+	
+
+	
+	\subsection*{Descripción de los bloques}
+	
+	\begin{itemize}
+		\item \textbf{Producer:} Genera SNPs sintéticos para cada miembro de la familia, simulando datos genómicos reales y enviándolos a Kafka.Esto permite probar y validar el pipeline sin depender de datos reales, manteniendo la privacidad y consistencia de la información.
+		\item \textbf{Kafka:} Actúa como intermediario de mensajes, transmitiendo los datos en tiempo real desde el producer hacia Spark Streaming y la consola.Su uso garantiza baja latencia y escalabilidad, asegurando que los datos se entreguen de manera confiable a múltiples consumidores.
+		\item \textbf{Spark Streaming:} Procesa los datos en tiempo real, calcula estadísticas por familia y por miembro, y publica los resultados nuevamente en Kafka.Esto permite análisis continuos y actualización inmediata de la información, crítico para la monitorización en tiempo real.
+		\item \textbf{HDFS:} Almacena las estadísticas procesadas de forma persistente. Cada micro-batch se guarda en formato Parquet, permitiendo análisis históricos, reconstrucción de métricas y escalabilidad del sistema.
+		\item \textbf{Consola Interactiva:} Consume las estadísticas pre-calculadas desde Kafka y presenta un dashboard interactivo que permite monitorear en tiempo real el estado de las familias y sus SNPs.Su función es facilitar la interpretación y toma de decisiones rápida, visualizando los resultados del pipeline de manera clara.
+	\end{itemize}
+	
+	\subsection*{Enfoque}
+	El enfoque del proyecto es \textbf{streaming}, dado que se requiere la generación y análisis continuo de datos genómicos, garantizando baja latencia y escalabilidad en tiempo real.
+	
+	\section*{Avances}
+	
+	Hasta la fecha, el proyecto ha alcanzado los siguientes avances, reflejando la implementación de un prototipo funcional del pipeline de procesamiento de datos genómicos sintéticos en streaming:
+	
+	\begin{itemize}
+		\item \textbf{Infraestructura de streaming y cluster:} Instalación y configuración de Kafka, Spark Streaming, HDFS, incluyendo contenedores Docker para facilitar la reproducibilidad y pruebas locales. HDFS está disponible y configurado para almacenamiento batch, aunque no se utiliza en el flujo principal de streaming.
+		\item \textbf{Tópicos y comunicación:} Creación de los tópicos en Kafka y verificación de la comunicación entre el \textit{producer} y el \textit{consumer}.
+		\item \textbf{Generador de familias sintéticas:} Desarrollo del módulo que genera familias completas con SNPs simulando datos genómicos reales y envío de los mismos a Kafka en tiempo real.
+		\item \textbf{Procesamiento en tiempo real:} Implementación de procesos en Spark Streaming para calcular estadísticas por familia y miembro, sin necesidad de procesamiento batch.
+		\item \textbf{Visualización inicial:} Desarrollo de una consola interactiva que consume las estadísticas pre-calculadas desde Kafka y presenta un dashboard en tiempo real.
+		\item \textbf{Métricas y monitoreo:} Registro de estadísticas de generación y envío de SNPs, incluyendo número de familias procesadas, SNPs enviados y latencia aproximada.
+		\item \textbf{Pruebas de escalabilidad:} Ejecución de pruebas con múltiples hilos de generación para evaluar el comportamiento del pipeline bajo cargas incrementales.
+		\item \textbf{Manejo de errores y logs:} Implementación de control de errores y logging en los hilos de streaming para garantizar la estabilidad del prototipo.
+	\end{itemize}
+	
+	Estos avances constituyen un prototipo funcional que valida el enfoque de streaming y permite continuar con la expansión y optimización del pipeline.
+	
+	
+
+\end{document}
