@@ -1,6 +1,6 @@
 services:
   # ==================== HDFS NAMENODE ====================
-  
+
   namenode:
     image: bde2020/hadoop-namenode:2.0.0-hadoop3.2.1-java8
     container_name: hdfs-namenode
@@ -13,8 +13,8 @@ services:
       - HDFS_CONF_dfs_permissions_enabled=false
       - HDFS_CONF_dfs_replication=1
     ports:
-      - "9870:9870"  # HDFS Web UI
-      - "9000:9000"  # HDFS Port
+      - "9870:9870" # HDFS Web UI
+      - "9000:9000" # HDFS Port
     volumes:
       - namenode_data:/hadoop/dfs/name
     networks:
@@ -22,14 +22,14 @@ services:
       - hadoop
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9870"]
+      test: [ "CMD", "curl", "-f", "http://localhost:9870" ]
       interval: 10s
       timeout: 5s
       retries: 5
       start_period: 30s
 
   # ==================== HDFS DATANODE ====================
-  
+
   datanode:
     image: bde2020/hadoop-datanode:2.0.0-hadoop3.2.1-java8
     container_name: hdfs-datanode
@@ -40,7 +40,7 @@ services:
       - HDFS_CONF_dfs_webhdfs_enabled=true
       - HDFS_CONF_dfs_permissions_enabled=false
     ports:
-      - "9864:9864"  # DataNode Web UI
+      - "9864:9864" # DataNode Web UI
     volumes:
       - datanode_data:/hadoop/dfs/data
     networks:
@@ -52,7 +52,7 @@ services:
     restart: unless-stopped
 
   # ==================== KAFKA UI ====================
-  
+
   kafka-ui:
     image: provectuslabs/kafka-ui:latest
     container_name: kafka-ui
@@ -69,7 +69,7 @@ services:
     restart: unless-stopped
 
   # ==================== ZOOKEEPER FOR SPARK HA ====================
-  
+
   zookeeper:
     image: zookeeper:3.7
     container_name: spark-zookeeper
@@ -83,9 +83,12 @@ services:
     restart: unless-stopped
 
   # ==================== SPARK CLUSTER ====================
-  
+
   spark-master-1:
-    image: apache/spark:latest
+    build:
+      context: .
+      dockerfile: Dockerfile.master
+    image: spark-master-custom
     container_name: spark-master-1
     hostname: spark-master-1
     user: root
@@ -94,11 +97,12 @@ services:
       - SPARK_MASTER_HOST=spark-master-1
       - SPARK_MASTER_PORT=7077
       - SPARK_MASTER_WEBUI_PORT=8080
+      - SPARK_LOCAL_IP=0.0.0.0
       - SPARK_DAEMON_JAVA_OPTS=-Dspark.deploy.recoveryMode=ZOOKEEPER -Dspark.deploy.zookeeper.url=zookeeper:2181 -Dspark.deploy.zookeeper.dir=/spark
-    command: /opt/spark/bin/spark-class org.apache.spark.deploy.master.Master
+    command: /opt/spark/bin/spark-class org.apache.spark.deploy.master.Master --host 0.0.0.0
     ports:
-      - "8080:8080"  # Spark Master 1 Web UI
-      - "7077:7077"  # Spark Master 1 Port
+      - "8080:8080" # Spark Master 1 Web UI
+      - "7077:7077" # Spark Master 1 Port
     networks:
       - producer_default
       - hadoop
@@ -106,15 +110,18 @@ services:
       zookeeper:
         condition: service_started
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080"]
+      test: [ "CMD", "curl", "-f", "http://localhost:8080" ]
       interval: 10s
       timeout: 5s
       retries: 10
       start_period: 30s
-    restart: unless-stopped
+    restart: always
 
   spark-master-2:
-    image: apache/spark:latest
+    build:
+      context: .
+      dockerfile: Dockerfile.master
+    image: spark-master-custom
     container_name: spark-master-2
     hostname: spark-master-2
     user: root
@@ -123,11 +130,12 @@ services:
       - SPARK_MASTER_HOST=spark-master-2
       - SPARK_MASTER_PORT=7077
       - SPARK_MASTER_WEBUI_PORT=8080
+      - SPARK_LOCAL_IP=0.0.0.0
       - SPARK_DAEMON_JAVA_OPTS=-Dspark.deploy.recoveryMode=ZOOKEEPER -Dspark.deploy.zookeeper.url=zookeeper:2181 -Dspark.deploy.zookeeper.dir=/spark
-    command: /opt/spark/bin/spark-class org.apache.spark.deploy.master.Master
+    command: /opt/spark/bin/spark-class org.apache.spark.deploy.master.Master --host 0.0.0.0
     ports:
-      - "8083:8080"  # Spark Master 2 Web UI
-      - "7078:7077"  # Spark Master 2 Port
+      - "8083:8080" # Spark Master 2 Web UI
+      - "7078:7077" # Spark Master 2 Port
     networks:
       - producer_default
       - hadoop
@@ -135,26 +143,29 @@ services:
       zookeeper:
         condition: service_started
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080"]
+      test: [ "CMD", "curl", "-f", "http://localhost:8080" ]
       interval: 10s
       timeout: 5s
       retries: 10
       start_period: 30s
-    restart: unless-stopped
+    restart: always
 
   spark-worker-1:
-    image: apache/spark:latest
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    image: spark-worker-custom
     container_name: spark-worker-1
     hostname: spark-worker-1
     user: root
-    command: bash -c "pip install --quiet requests && /opt/spark/bin/spark-class org.apache.spark.deploy.worker.Worker spark://spark-master-1:7077,spark-master-2:7077"
+    command: /opt/spark/bin/spark-class org.apache.spark.deploy.worker.Worker spark://spark-master-1:7077,spark-master-2:7077
     environment:
       - SPARK_NO_DAEMONIZE=true
       - SPARK_WORKER_MEMORY=3G
       - SPARK_WORKER_CORES=2
       - SPARK_WORKER_WEBUI_PORT=8081
     ports:
-      - "8081:8081"  # Worker 1 Web UI
+      - "8081:8081" # Worker 1 Web UI
     depends_on:
       spark-master-1:
         condition: service_healthy
@@ -163,21 +174,24 @@ services:
     networks:
       - producer_default
       - hadoop
-    restart: unless-stopped
+    restart: always
 
   spark-worker-2:
-    image: apache/spark:latest
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    image: spark-worker-custom
     container_name: spark-worker-2
     hostname: spark-worker-2
     user: root
-    command: bash -c "pip install --quiet requests && /opt/spark/bin/spark-class org.apache.spark.deploy.worker.Worker spark://spark-master-1:7077,spark-master-2:7077"
+    command: /opt/spark/bin/spark-class org.apache.spark.deploy.worker.Worker spark://spark-master-1:7077,spark-master-2:7077
     environment:
       - SPARK_NO_DAEMONIZE=true
-      - SPARK_WORKER_MEMORY=4G
+      - SPARK_WORKER_MEMORY=3G
       - SPARK_WORKER_CORES=2
       - SPARK_WORKER_WEBUI_PORT=8082
     ports:
-      - "8082:8082"  # Worker 2 Web UI
+      - "8082:8082" # Worker 2 Web UI
     depends_on:
       spark-master-1:
         condition: service_healthy
@@ -186,12 +200,15 @@ services:
     networks:
       - producer_default
       - hadoop
-    restart: unless-stopped
+    restart: always
 
   # ==================== SPARK DRIVER ====================
-  
+
   spark-driver:
-    image: apache/spark:latest
+    build:
+      context: .
+      dockerfile: Dockerfile.driver
+    image: spark-driver-custom
     container_name: spark-driver
     hostname: spark-driver
     user: root
@@ -200,26 +217,11 @@ services:
       - PYTHONUNBUFFERED=1
       - SPARK_NO_DAEMONIZE=true
     command: >
-      bash -c "echo '🔧 Installing Python packages...' &&
-      pip install pandas requests &&
-      echo 'Packages installed, starting Spark application...' &&
-      /opt/spark/bin/spark-submit
-      --master spark://spark-master-1:7077,spark-master-2:7077
-      --deploy-mode client
-      --driver-memory 1g
-      --executor-memory 2g
-      --executor-cores 2
-      --total-executor-cores 4
-      --conf spark.driver.host=spark-driver
-      --conf spark.driver.bindAddress=0.0.0.0
-      --conf spark.executor.instances=2
-      --conf spark.dynamicAllocation.enabled=false
-      --packages org.apache.spark:spark-sql-kafka-0-10_2.13:4.0.0-preview2
-      /app/spark_consumer.py"
+      /opt/spark/bin/spark-submit --master spark://spark-master-1:7077,spark-master-2:7077 --deploy-mode client --driver-memory 1g --executor-memory 2g --executor-cores 2 --total-executor-cores 4 --conf spark.driver.host=spark-driver --conf spark.driver.bindAddress=0.0.0.0 --conf spark.executor.instances=2 --conf spark.dynamicAllocation.enabled=false /app/spark_consumer.py
     volumes:
       - ./spark_consumer.py:/app/spark_consumer.py:ro
     ports:
-      - "4040:4040"  # Spark Driver UI
+      - "4040:4040" # Spark Driver UI
     networks:
       - producer_default
       - hadoop
@@ -239,18 +241,14 @@ services:
     restart: always
 
   # ==================== DASHBOARD ====================
-  
+
   dashboard:
-    image: python:3.11-slim
+    build:
+      context: .
+      dockerfile: dockerfile.dashboard
+    image: dashboard-custom
     container_name: genomic-dashboard
     hostname: dashboard
-    working_dir: /app
-    command: >
-      bash -c "pip install --quiet -r requirements_dashboard.txt &&
-      python dashboard/dashboard_advanced.py"
-    volumes:
-      - ./dashboard:/app/dashboard:ro
-      - ./requirements_dashboard.txt:/app/requirements_dashboard.txt:ro
     ports:
       - "5000:5000"
     networks:
@@ -270,4 +268,3 @@ networks:
   producer_default:
     name: producer_producer_default
     external: true
-  

@@ -1,0 +1,14 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Copiar requirements y instalarlos
+COPY requirements_dashboard.txt .
+RUN pip install --no-cache-dir -r requirements_dashboard.txt
+
+# Copiar código del dashboard
+COPY dashboard /app/dashboard
+
+EXPOSE 5000
+
+CMD ["python", "dashboard/dashboard_advanced.py"]
