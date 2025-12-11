@@ -6,7 +6,7 @@ set -e
 source "$(dirname "$0")/.env.sh"
 
 # Iniciar Producer
-cd "$PRODUCER_PATH" && docker-compose up --scale genomic-producer=2 -d
+cd "$PRODUCER_PATH" && docker compose up --scale genomic-producer=2 -d
 
 # Iniciar Consumer
-cd "$CONSUMER_PATH" && docker-compose up -d
+cd "$CONSUMER_PATH" && docker compose up -d

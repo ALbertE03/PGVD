@@ -9,8 +9,8 @@ echo "🛑 Deteniendo sistema y eliminando volúmenes..."
 echo ""
 
 echo "⏹️  Deteniendo producer..."
-cd "$PRODUCER_PATH" && docker-compose down -v
+cd "$PRODUCER_PATH" && docker compose down -v
 
 echo ""
 echo "⏹️  Deteniendo consumer..."
-cd "$CONSUMER_PATH" && docker-compose down -v
+cd "$CONSUMER_PATH" && docker compose down -v
