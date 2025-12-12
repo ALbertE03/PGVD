@@ -6,8 +6,25 @@ let currentGenoType = 'fathers';
 let currentSnpRangeType = 'fathers';
 let currentFamilySizeType = 'fathers';
 
+// Get dark theme colors (fixed palette)
+function getThemeColors() {
+    return {
+        gridColor: '#2d3748',
+        textColor: '#e2e8f0',
+        blue: '#3b82f6',
+        red: '#ef4444',
+        green: '#10b981',
+        amber: '#f59e0b',
+        purple: '#8b5cf6',
+        cyan: '#06b6d4',
+        pink: '#ec4899',
+    };
+}
+
 // Initialize all charts
 function initializeCharts() {
+    const colors = getThemeColors();
+    
     // Processing Rate - Line Chart
     charts.processing = new Chart(document.getElementById('processingChart'), {
         type: 'line',
@@ -17,23 +34,26 @@ function initializeCharts() {
                 {
                     label: 'Fathers',
                     data: [],
-                    borderColor: '#3498db',
-                    backgroundColor: 'rgba(52, 152, 219, 0.1)',
-                    tension: 0.4
+                    borderColor: colors.blue,
+                    backgroundColor: colors.blue + '20',
+                    tension: 0.4,
+                    borderWidth: 3
                 },
                 {
                     label: 'Mothers',
                     data: [],
-                    borderColor: '#e74c3c',
-                    backgroundColor: 'rgba(231, 76, 60, 0.1)',
-                    tension: 0.4
+                    borderColor: colors.red,
+                    backgroundColor: colors.red + '20',
+                    tension: 0.4,
+                    borderWidth: 3
                 },
                 {
                     label: 'Children',
                     data: [],
-                    borderColor: '#2ecc71',
-                    backgroundColor: 'rgba(46, 204, 113, 0.1)',
-                    tension: 0.4
+                    borderColor: colors.green,
+                    backgroundColor: colors.green + '20',
+                    tension: 0.4,
+                    borderWidth: 3
                 }
             ]
         },
@@ -41,10 +61,25 @@ function initializeCharts() {
             responsive: true,
             maintainAspectRatio: true,
             scales: {
-                y: { beginAtZero: true }
+                y: { 
+                    beginAtZero: true,
+                    grid: { color: colors.gridColor },
+                    ticks: { color: colors.textColor }
+                },
+                x: {
+                    grid: { display: false },
+                    ticks: { color: colors.textColor }
+                }
             },
             plugins: {
-                legend: { position: 'bottom' }
+                legend: { 
+                    position: 'bottom',
+                    labels: { 
+                        usePointStyle: true, 
+                        padding: 20,
+                        color: colors.textColor
+                    }
+                }
             }
         }
     });
@@ -57,17 +92,33 @@ function initializeCharts() {
             datasets: [{
                 label: 'CPU %',
                 data: [],
-                borderColor: '#e67e22',
-                backgroundColor: 'rgba(230, 126, 34, 0.1)',
+                borderColor: colors.amber,
+                backgroundColor: colors.amber + '20',
                 tension: 0.3,
-                fill: true
+                fill: true,
+                borderWidth: 3
             }]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            scales: { y: { beginAtZero: true, max: 100 } },
-            plugins: { legend: { display: false } },
+            scales: { 
+                y: { 
+                    beginAtZero: true, 
+                    max: 100, 
+                    grid: { color: colors.gridColor },
+                    ticks: { color: colors.textColor }
+                },
+                x: { 
+                    grid: { display: false },
+                    ticks: { color: colors.textColor }
+                }
+            },
+            plugins: { 
+                legend: { 
+                    display: false 
+                } 
+            },
             animation: false
         }
     });
@@ -80,17 +131,33 @@ function initializeCharts() {
             datasets: [{
                 label: 'RAM %',
                 data: [],
-                borderColor: '#9b59b6',
-                backgroundColor: 'rgba(155, 89, 182, 0.1)',
+                borderColor: colors.purple,
+                backgroundColor: colors.purple + '20',
                 tension: 0.3,
-                fill: true
+                fill: true,
+                borderWidth: 3
             }]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            scales: { y: { beginAtZero: true, max: 100 } },
-            plugins: { legend: { display: false } },
+            scales: { 
+                y: { 
+                    beginAtZero: true, 
+                    max: 100, 
+                    grid: { color: colors.gridColor },
+                    ticks: { color: colors.textColor }
+                },
+                x: { 
+                    grid: { display: false },
+                    ticks: { color: colors.textColor }
+                }
+            },
+            plugins: { 
+                legend: { 
+                    display: false 
+                } 
+            },
             animation: false
         }
     });
@@ -102,21 +169,22 @@ function initializeCharts() {
             labels: ['Used (GB)', 'Free (GB)'],
             datasets: [{
                 data: [0, 100],
-                backgroundColor: ['#e74c3c', '#2ecc71'],
-                borderWidth: 2,
-                borderColor: '#fff'
+                backgroundColor: [colors.red, colors.green],
+                borderWidth: 0,
+                hoverOffset: 8
             }]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            cutout: '60%',
+            cutout: '65%',
             plugins: {
                 legend: { 
                     position: 'bottom',
                     labels: {
                         font: { size: 11 },
-                        padding: 10
+                        padding: 10,
+                        color: colors.textColor
                     }
                 },
                 tooltip: {
@@ -181,22 +249,36 @@ function updateClusterCharts(data) {
         return bytes / (1024 * 1024 * 1024);
     }
 
-    // Current values text
-    if (data.current.cpu) document.getElementById('cpu-val').textContent = data.current.cpu.value.toFixed(1);
-    if (data.current.ram) document.getElementById('ram-val').textContent = data.current.ram.value.toFixed(1);
-    if (data.current.disk) document.getElementById('disk-val').textContent = data.current.disk.value.toFixed(1);
+    // Current values text - con validación para evitar NaN
+    const cpuValue = (data.current && data.current.cpu && !isNaN(data.current.cpu.value)) 
+        ? data.current.cpu.value.toFixed(1) 
+        : '0.0';
+    const ramValue = (data.current && data.current.ram && !isNaN(data.current.ram.value)) 
+        ? data.current.ram.value.toFixed(1) 
+        : '0.0';
+    const diskValue = (data.current && data.current.disk && !isNaN(data.current.disk.value)) 
+        ? data.current.disk.value.toFixed(1) 
+        : '0.0';
+    
+    document.getElementById('cpu-val').textContent = cpuValue;
+    document.getElementById('ram-val').textContent = ramValue;
+    document.getElementById('disk-val').textContent = diskValue;
 
     // Update CPU Graph
-    if (data.cpu.length > 0) {
-        charts.cpu.data.labels = data.cpu.map(d => new Date(d.timestamp).toLocaleTimeString());
-        charts.cpu.data.datasets[0].data = data.cpu.map(d => d.value);
+    if (data.cpu && data.cpu.length > 0) {
+        const labels = data.cpu.map(d => new Date(d.timestamp).toLocaleTimeString());
+        const values = data.cpu.map(d => isNaN(d.value) ? 0 : d.value);
+        charts.cpu.data.labels = labels;
+        charts.cpu.data.datasets[0].data = values;
         charts.cpu.update();
     }
 
     // Update RAM Graph
-    if (data.ram.length > 0) {
-        charts.ram.data.labels = data.ram.map(d => new Date(d.timestamp).toLocaleTimeString());
-        charts.ram.data.datasets[0].data = data.ram.map(d => d.value);
+    if (data.ram && data.ram.length > 0) {
+        const labels = data.ram.map(d => new Date(d.timestamp).toLocaleTimeString());
+        const values = data.ram.map(d => isNaN(d.value) ? 0 : d.value);
+        charts.ram.data.labels = labels;
+        charts.ram.data.datasets[0].data = values;
         charts.ram.update();
     }
 
@@ -223,25 +305,28 @@ function updateSparkTopology(sparkData) {
         let mastersHtml = '';
         sparkData.masters.forEach(m => {
             const isAlive = m.status === 'ALIVE';
-            const statusColor = isAlive ? '#2ecc71' : (m.status === 'STANDBY' ? '#f39c12' : '#e74c3c');
-            const icon = isAlive ? '⚡' : (m.status === 'STANDBY' ? '💤' : '❌');
+            const statusColor = isAlive ? '#10b981' : (m.status === 'STANDBY' ? '#f59e0b' : '#ef4444');
+            const isEmergency = m.type === 'WORKER_AS_MASTER';
+            const typeLabel = isEmergency ? 'Emergency Master (Worker Failover)' : 'Master';
 
             mastersHtml += `
-                <div style="background:#f8f9fa; border-top: 4px solid ${statusColor}; border-radius:8px; padding:15px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
-                    <div style="font-weight:bold; font-size:1em; margin-bottom:5px;">${icon} ${m.name}</div>
-                    <div style="font-size:0.8em; color:#666; margin-bottom:5px;">${m.url || 'No URL'}</div>
-                    <div style="font-size:0.9em; font-weight:bold; color:${statusColor};">${m.status}</div>
+                <div style="background:#1a1f2e; border: 2px solid #6b7280; border-top: 4px solid ${statusColor}; border-radius:12px; padding:20px; box-shadow: 0 4px 12px rgba(0,0,0,0.5); backdrop-filter: blur(10px);">
+                    <div style="font-weight:700; font-size:1.1em; margin-bottom:5px; color:#e2e8f0;">${m.name}</div>
+                    <div style="font-size:0.8em; color:#94a3b8; margin-bottom:4px; font-weight:500;">${typeLabel}</div>
+                    <div style="font-size:0.85em; color:#94a3b8; margin-bottom:8px; font-family:monospace;">${m.url || 'No URL'}</div>
+                    <div style="font-size:0.9em; font-weight:700; color:${statusColor}; letter-spacing:0.05em; text-shadow: 0 0 10px ${statusColor};">${m.status}</div>
+                    ${isAlive ? `<div style="font-size:0.8em; color:#94a3b8; margin-top:8px; border-top:1px solid #6b7280; padding-top:8px;">Workers: <strong style="color:#e2e8f0;">${m.workers_count || 0}</strong></div>` : ''}
                 </div>
             `;
         });
         mastersContainer.innerHTML = mastersHtml;
     } else {
-        mastersContainer.innerHTML = '<div style="color:#666;">No masters found</div>';
+        mastersContainer.innerHTML = '<div style="color:#ffffff; font-style:italic;">No masters found</div>';
     }
 
     // --- Render Workers ---
     if (!sparkData.workers || sparkData.workers.length === 0) {
-        workersContainer.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 20px; color: #666;">No Workers Registered (Check Active Master)</div>';
+        workersContainer.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 30px; color:#ffffff; background:#1a1f2e; border-radius:12px; border:2px solid #6b7280;">No Workers Registered (Check Active Master)</div>';
         return;
     }
 
@@ -249,33 +334,52 @@ function updateSparkTopology(sparkData) {
 
     // Workers
     sparkData.workers.sort((a, b) => a.id.localeCompare(b.id)).forEach(w => {
-        const coreUsage = ((w.cores - w.coresfree) / w.cores) * 100;
-        const memUsage = ((w.memory - w.memoryfree) / w.memory) * 100;
-        const statusColor = w.state === 'ALIVE' ? '#2ecc71' : '#e74c3c';
+        // Usar valores calculados con seguridad
+        const cores = parseInt(w.cores) || 0;
+        const coresUsed = parseInt(w.cores_used) || 0;
+        const coresFree = parseInt(w.coresfree) || cores - coresUsed;
+        const memory = parseInt(w.memory) || 0;
+        const memoryUsed = parseInt(w.memory_used) || 0;
+        const memoryFree = parseInt(w.memoryfree) || memory - memoryUsed;
+        
+        // Calcular porcentajes de forma segura
+        const coreUsage = cores > 0 ? ((coresUsed / cores) * 100) : 0;
+        const memUsage = memory > 0 ? ((memoryUsed / memory) * 100) : 0;
+        
+        const statusColor = w.state === 'ALIVE' ? '#10b981' : '#ef4444';
+        const cpuColor = coreUsage > 80 ? '#ef4444' : (coreUsage > 50 ? '#f59e0b' : '#3b82f6');
+        const memColor = memUsage > 80 ? '#ef4444' : (memUsage > 50 ? '#f59e0b' : '#8b5cf6');
 
         html += `
-            <div style="background:#f8f9fa; border-left: 4px solid ${statusColor}; border-radius:8px; padding:15px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
-                <div style="font-weight:bold; font-size:0.9em; margin-bottom:5px; word-break:break-all;">${w.id}</div>
-                <div style="font-size:0.8em; color:#666; margin-bottom:10px;">${w.host}:${w.port}</div>
+            <div style="background:#1a1f2e; border: 2px solid #6b7280; border-left: 4px solid ${statusColor}; border-radius:12px; padding:20px; box-shadow: 0 4px 12px rgba(0,0,0,0.5); backdrop-filter: blur(10px);">
+                <div style="font-weight:600; font-size:0.95em; margin-bottom:5px; word-break:break-all; color:#e2e8f0;">${w.id}</div>
+                <div style="font-size:0.85em; color:#94a3b8; margin-bottom:15px; font-family:monospace;">${w.host}:${w.port}</div>
                 
-                <div style="margin-bottom:8px;">
-                    <div style="display:flex; justify-content:space-between; font-size:0.75em; margin-bottom:2px;">
-                        <span>Cores</span>
-                        <span>${w.cores - w.coresfree}/${w.cores}</span>
+                <div style="margin-bottom:12px;">
+                    <div style="display:flex; justify-content:space-between; font-size:0.8em; margin-bottom:4px; color:#94a3b8;">
+                        <span style="font-weight:500;">Cores</span>
+                        <span style="font-weight:600; color:#e2e8f0;">${coresUsed}/${cores} (${coreUsage.toFixed(1)}%)</span>
                     </div>
-                    <div style="height:6px; background:#e0e0e0; border-radius:3px; overflow:hidden;">
-                        <div style="height:100%; width:${coreUsage}%; background:#3498db;"></div>
+                    <div style="height:6px; background:#0f1419; border-radius:3px; overflow:hidden;">
+                        <div style="height:100%; width:${coreUsage}%; background:${cpuColor}; transition: width 0.3s; box-shadow: 0 0 10px ${cpuColor};"></div>
                     </div>
+                    <div style="font-size:0.75em; color:#9ca3af; margin-top:2px;">Free: ${coresFree} cores</div>
                 </div>
                 
                 <div>
-                    <div style="display:flex; justify-content:space-between; font-size:0.75em; margin-bottom:2px;">
-                        <span>Memory (MB)</span>
-                        <span>${w.memory - w.memoryfree}/${w.memory}</span>
+                    <div style="display:flex; justify-content:space-between; font-size:0.8em; margin-bottom:4px; color:#94a3b8;">
+                        <span style="font-weight:500;">Memory</span>
+                        <span style="font-weight:600; color:#e2e8f0;">${memoryUsed}/${memory} MB (${memUsage.toFixed(1)}%)</span>
                     </div>
-                    <div style="height:6px; background:#e0e0e0; border-radius:3px; overflow:hidden;">
-                        <div style="height:100%; width:${memUsage}%; background:#9b59b6;"></div>
+                    <div style="height:6px; background:#0f1419; border-radius:3px; overflow:hidden;">
+                        <div style="height:100%; width:${memUsage}%; background:${memColor}; transition: width 0.3s; box-shadow: 0 0 10px ${memColor};"></div>
                     </div>
+                    <div style="font-size:0.75em; color:#9ca3af; margin-top:2px;">Free: ${memoryFree} MB</div>
+                </div>
+                
+                <div style="margin-top:15px; padding-top:12px; border-top:1px solid #6b7280; font-size:0.8em; color:#94a3b8; display:flex; justify-content:space-between; align-items:center;">
+                    <span>Status</span>
+                    <span style="color:${statusColor}; font-weight:700; background:${statusColor}25; padding:2px 8px; border-radius:4px; box-shadow: 0 0 10px ${statusColor}50;">${w.state}</span>
                 </div>
             </div>
         `;
@@ -298,6 +402,10 @@ function updateHdfsMetrics(hdfs) {
     const statusEl = document.getElementById('hdfs-status');
     if (statusEl) {
         statusEl.textContent = hdfs.status || '-';
+        // Color verde si es "active", rojo si no
+        const isActive = (hdfs.status || '').toLowerCase() === 'active';
+        statusEl.style.color = isActive ? '#10b981' : '#ef4444';
+        statusEl.style.textShadow = isActive ? '0 0 10px rgba(16,185,129,0.5)' : '0 0 10px rgba(239,68,68,0.5)';
     }
 
     const capacityEl = document.getElementById('hdfs-capacity');
@@ -330,26 +438,26 @@ function updateHdfsMetrics(hdfs) {
     const underReplicatedEl = document.getElementById('hdfs-under-replicated');
     if (underReplicatedEl) {
         underReplicatedEl.textContent = hdfs.under_replicated || 0;
-        underReplicatedEl.style.color = (hdfs.under_replicated || 0) > 0 ? '#f39c12' : '#2ecc71';
+        underReplicatedEl.style.color = (hdfs.under_replicated || 0) > 0 ? '#f59e0b' : '#10b981';
     }
 
     const corruptEl = document.getElementById('hdfs-corrupt');
     if (corruptEl) {
         corruptEl.textContent = hdfs.corrupt_blocks || 0;
-        corruptEl.style.color = (hdfs.corrupt_blocks || 0) > 0 ? '#e74c3c' : '#2ecc71';
+        corruptEl.style.color = (hdfs.corrupt_blocks || 0) > 0 ? '#ef4444' : '#10b981';
     }
 
     const missingEl = document.getElementById('hdfs-missing');
     if (missingEl) {
         missingEl.textContent = hdfs.missing_blocks || 0;
-        missingEl.style.color = (hdfs.missing_blocks || 0) > 0 ? '#e74c3c' : '#2ecc71';
+        missingEl.style.color = (hdfs.missing_blocks || 0) > 0 ? '#ef4444' : '#10b981';
     }
 
     // Update safemode
     const safemodeEl = document.getElementById('hdfs-safemode');
     if (safemodeEl) {
         safemodeEl.textContent = hdfs.safemode ? 'ON' : 'OFF';
-        safemodeEl.style.color = hdfs.safemode ? '#f39c12' : '#2ecc71';
+        safemodeEl.style.color = hdfs.safemode ? '#f59e0b' : '#10b981';
     }
 
     // Update DataNodes
@@ -358,32 +466,33 @@ function updateHdfsMetrics(hdfs) {
         let html = '';
         hdfs.datanodes.forEach(node => {
             const usagePercent = node.capacity > 0 ? (node.used / node.capacity * 100) : 0;
-            const statusColor = node.state === 'In Service' ? '#2ecc71' : '#f39c12';
+            const statusColor = node.state === 'In Service' ? '#10b981' : '#f59e0b';
             
             html += `
-                <div style="background:#f8f9fa; border-left: 4px solid ${statusColor}; border-radius:8px; padding:15px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
-                    <div style="font-weight:bold; font-size:0.9em; margin-bottom:5px; word-break:break-all;">📦 ${node.name}</div>
-                    <div style="font-size:0.8em; color:#666; margin-bottom:10px;">State: ${node.state}</div>
+                <div style="background:#1a1f2e; border: 2px solid #6b7280; border-left: 4px solid ${statusColor}; border-radius:12px; padding:20px; box-shadow: 0 4px 12px rgba(0,0,0,0.5); backdrop-filter: blur(10px);">
+                    <div style="font-weight:600; font-size:0.95em; margin-bottom:5px; word-break:break-all; color:#e2e8f0;">${node.name}</div>
+                    <div style="font-size:0.85em; color:#94a3b8; margin-bottom:15px; font-family:monospace;">State: ${node.state}</div>
                     
-                    <div style="margin-bottom:8px;">
-                        <div style="display:flex; justify-content:space-between; font-size:0.75em; margin-bottom:2px;">
-                            <span>Storage</span>
-                            <span>${formatBytes(node.used)} / ${formatBytes(node.capacity)}</span>
+                    <div style="margin-bottom:12px;">
+                        <div style="display:flex; justify-content:space-between; font-size:0.8em; margin-bottom:4px; color:#9ca3af;">
+                            <span style="font-weight:500;">Storage</span>
+                            <span style="font-weight:600; color:#e2e8f0;">${formatBytes(node.used)} / ${formatBytes(node.capacity)}</span>
                         </div>
-                        <div style="height:6px; background:#e0e0e0; border-radius:3px; overflow:hidden;">
-                            <div style="height:100%; width:${usagePercent}%; background:#3498db;"></div>
+                        <div style="height:6px; background:#0f1419; border-radius:3px; overflow:hidden;">
+                            <div style="height:100%; width:${usagePercent}%; background:#3b82f6; box-shadow: 0 0 10px #3b82f6;"></div>
                         </div>
                     </div>
                     
-                    <div style="font-size:0.75em; color:#666;">
-                        Remaining: ${formatBytes(node.remaining)}
+                    <div style="font-size:0.8em; color:#9ca3af; display:flex; justify-content:space-between;">
+                        <span>Remaining:</span>
+                        <span style="font-weight:600; color:#e2e8f0;">${formatBytes(node.remaining)}</span>
                     </div>
                 </div>
             `;
         });
         datanodesContainer.innerHTML = html;
     } else if (datanodesContainer) {
-        datanodesContainer.innerHTML = '<div style="color:#666;">No DataNodes found</div>';
+        datanodesContainer.innerHTML = '<div style="color:#ffffff; font-style:italic;">No DataNodes found</div>';
     }
 }
 

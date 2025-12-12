@@ -39,15 +39,27 @@ def create_spark_session():
     """Crea y configura la sesión de Spark"""
     print(f"🚀 Conectando al cluster Spark...")
     
+    # Obtener número de cores del cluster dinámicamente
+    # Spark autodetectará esto, pero podemos dar un hint inicial
     spark = SparkSession.builder \
         .appName("GenomicDataConsumer") \
         .config("spark.streaming.stopGracefullyOnShutdown", "true") \
         .config("spark.sql.streaming.schemaInference", "true") \
-        .config("spark.sql.shuffle.partitions", "8") \
-        .config("spark.default.parallelism", "8") \
         .config("spark.sql.adaptive.enabled", "true") \
         .config("spark.sql.adaptive.coalescePartitions.enabled", "true") \
         .getOrCreate()
+    
+    # Ajustar particiones dinámicamente basado en cores reales
+    sc = spark.sparkContext
+    total_cores = int(sc._conf.get("spark.executor.instances", "3")) * int(sc._conf.get("spark.executor.cores", "2"))
+    
+    # Configurar particiones igual al número de cores para máxima paralelización
+    spark.conf.set("spark.sql.shuffle.partitions", str(total_cores))
+    spark.conf.set("spark.default.parallelism", str(total_cores))
+    
+    print(f"✅ Spark configurado con {total_cores} cores totales")
+    print(f"   - Shuffle partitions: {total_cores}")
+    print(f"   - Default parallelism: {total_cores}")
     
     # Configurar nivel de logging
     spark.sparkContext.setLogLevel("ERROR")

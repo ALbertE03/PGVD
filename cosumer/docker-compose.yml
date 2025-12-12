@@ -158,19 +158,18 @@ services:
     container_name: spark-worker-1
     hostname: spark-worker-1
     user: root
-    command: /opt/spark/bin/spark-class org.apache.spark.deploy.worker.Worker spark://spark-master-1:7077,spark-master-2:7077
     environment:
       - SPARK_NO_DAEMONIZE=true
       - SPARK_WORKER_MEMORY=3G
       - SPARK_WORKER_CORES=2
       - SPARK_WORKER_WEBUI_PORT=8081
+      - ZOOKEEPER_URL=zookeeper:2181
     ports:
-      - "8081:8081" # Worker 1 Web UI
+      - "8081:8081" # Worker 1 Web UI (puede convertirse en Master UI)
+      - "7079:7077" # Puerto Master alternativo para worker-1
     depends_on:
-      spark-master-1:
-        condition: service_healthy
-      spark-master-2:
-        condition: service_healthy
+      zookeeper:
+        condition: service_started
     networks:
       - producer_default
       - hadoop
@@ -184,19 +183,42 @@ services:
     container_name: spark-worker-2
     hostname: spark-worker-2
     user: root
-    command: /opt/spark/bin/spark-class org.apache.spark.deploy.worker.Worker spark://spark-master-1:7077,spark-master-2:7077
     environment:
       - SPARK_NO_DAEMONIZE=true
       - SPARK_WORKER_MEMORY=3G
       - SPARK_WORKER_CORES=2
       - SPARK_WORKER_WEBUI_PORT=8082
+      - ZOOKEEPER_URL=zookeeper:2181
     ports:
-      - "8082:8082" # Worker 2 Web UI
+      - "8082:8082" # Worker 2 Web UI (puede convertirse en Master UI)
+      - "7080:7077" # Puerto Master alternativo para worker-2
     depends_on:
-      spark-master-1:
-        condition: service_healthy
-      spark-master-2:
-        condition: service_healthy
+      zookeeper:
+        condition: service_started
+    networks:
+      - producer_default
+      - hadoop
+    restart: always
+  spark-worker-3:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    image: spark-worker-custom
+    container_name: spark-worker-3
+    hostname: spark-worker-3
+    user: root
+    environment:
+      - SPARK_NO_DAEMONIZE=true
+      - SPARK_WORKER_MEMORY=3G
+      - SPARK_WORKER_CORES=2
+      - SPARK_WORKER_WEBUI_PORT=8084
+      - ZOOKEEPER_URL=zookeeper:2181
+    ports:
+      - "8084:8084" # Worker 3 Web UI (puede convertirse en Master UI)
+      - "7081:7077" # Puerto Master alternativo para worker-3
+    depends_on:
+      zookeeper:
+        condition: service_started
     networks:
       - producer_default
       - hadoop
@@ -216,8 +238,7 @@ services:
       - KAFKA_BROKER_URL=kafka:9092
       - PYTHONUNBUFFERED=1
       - SPARK_NO_DAEMONIZE=true
-    command: >
-      /opt/spark/bin/spark-submit --master spark://spark-master-1:7077,spark-master-2:7077 --deploy-mode client --driver-memory 1g --executor-memory 2g --executor-cores 2 --total-executor-cores 4 --conf spark.driver.host=spark-driver --conf spark.driver.bindAddress=0.0.0.0 --conf spark.executor.instances=2 --conf spark.dynamicAllocation.enabled=false /app/spark_consumer.py
+      - ZOOKEEPER_URL=zookeeper:2181
     volumes:
       - ./spark_consumer.py:/app/spark_consumer.py:ro
     ports:

@@ -9,8 +9,9 @@ RUN cd /opt/spark/jars && \
     curl -L -O "https://repo1.maven.org/maven2/org/apache/spark/spark-token-provider-kafka-0-10_2.13/4.0.0-preview2/spark-token-provider-kafka-0-10_2.13-4.0.0-preview2.jar" && \
     curl -L -O "https://repo1.maven.org/maven2/org/apache/commons/commons-pool2/2.12.0/commons-pool2-2.12.0.jar"
 
-# Configurar Spark para escuchar en todas las interfaces
-RUN echo "spark.driver.bindAddress 0.0.0.0" >> /opt/spark/conf/spark-defaults.conf
+
+RUN mkdir -p /opt/spark/conf && \
+    echo "spark.driver.bindAddress 0.0.0.0" >> /opt/spark/conf/spark-defaults.conf
 
 USER root
 
