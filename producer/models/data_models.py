@@ -3,7 +3,7 @@ Modelos de datos para los mensajes del productor.
 Define las estructuras de los datos que se envían a Kafka.
 """
 
-from typing import TypedDict, List
+from typing import TypedDict
 
 
 class SNPMessage(TypedDict):

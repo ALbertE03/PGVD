@@ -106,20 +106,33 @@ def discover_spark_services():
             continue
     
     # Descubrir workers (intentar spark-worker-1 hasta spark-worker-20)
-    # Mapeo de puertos personalizado según docker-compose.yml
-    worker_ports = {
-        1: 8081,
-        2: 8082,
-        3: 8084  # worker-3 usa 8084 (8083 está ocupado por master-2)
-    }
-    
     for idx in range(1, 21):
         hostname = f"spark-worker-{idx}"
         try:
             socket.gethostbyname(hostname)
-            # Usar puerto personalizado o calcular dinámicamente
-            port = worker_ports.get(idx, 8080 + idx)
-            discovered['workers'].append((hostname, port))
+
+            # Resolver puerto dinámicamente: probar un rango corto de puertos típicos
+            # (evita hardcodear cuando agregas más workers o cambias puertos)
+            found_port = None
+            candidates = []
+            # patrón común: 8080 + idx
+            candidates.append(8080 + idx)
+            # puertos comunes en este proyecto
+            for p in range(8080, 8091):
+                if p not in candidates:
+                    candidates.append(p)
+
+            for port in candidates:
+                try:
+                    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                        s.settimeout(0.15)
+                        if s.connect_ex((hostname, port)) == 0:
+                            found_port = port
+                            break
+                except Exception:
+                    pass
+
+            discovered['workers'].append((hostname, found_port if found_port else 8081))
         except socket.gaierror:
             if idx > 3:  # Al menos intentar 3 workers
                 break
@@ -138,8 +151,11 @@ def poll_spark_metrics():
             # Descubrir dinámicamente los servicios disponibles
             services = discover_spark_services()
             master_hosts = services['masters'] if services['masters'] else ['spark-master-1', 'spark-master-2']
-            worker_hosts = services['workers'] if services['workers'] else [('spark-worker-1', 8081), ('spark-worker-2', 8082)]
+            worker_hosts = services['workers'] if services['workers'] else [('spark-worker-1', 8081), ('spark-worker-2', 8082),('spark-worker-3', 8084)]
             
+            # Mapa host->puerto para lookups (emergency masters, etc.)
+            active_workers_map = {host: port for host, port in worker_hosts}
+
             print(f"[Spark HA] Discovered {len(master_hosts)} masters and {len(worker_hosts)} workers")
             
             # Consultar todos los masters descubiertos
@@ -219,8 +235,7 @@ def poll_spark_metrics():
                 
                 # Try to check status of this known emergency master
                 try:
-                    worker_num = int(em_host.split('-')[-1])
-                    em_port = worker_ports.get(worker_num, 8081)
+                    em_port = active_workers_map.get(em_host, 8081)
                     url = f"http://{em_host}:{em_port}/json/"
                     response = requests.get(url, timeout=2)
                     

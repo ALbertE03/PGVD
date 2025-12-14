@@ -155,17 +155,52 @@ while true; do
         --conf spark.executor.instances=$worker_count \
         --conf spark.dynamicAllocation.enabled=false \
         --conf spark.network.timeout=600s \
-        --conf spark.executor.heartbeatInterval=60s \
+        --conf spark.executor.heartbeatInterval=30s \
+        --conf spark.rpc.retry.wait=5s \
+        --conf spark.rpc.numRetries=10 \
+        --conf spark.rpc.lookupTimeout=240s \
+        --conf spark.core.connection.ack.wait.timeout=600s \
+        --conf spark.scheduler.maxRegisteredResourcesWaitingTime=120s \
+        --conf spark.scheduler.minRegisteredResourcesRatio=0.3 \
+        --conf spark.scheduler.revive.interval=1s \
+        --conf spark.blacklist.enabled=false \
+        --conf spark.task.maxFailures=20 \
+        --conf spark.stage.maxConsecutiveAttempts=20 \
+        --conf spark.storage.blockManagerTimeoutIntervalMs=600000 \
+        --conf spark.network.timeoutInterval=240s \
+        --conf spark.executor.allowSparkContext=true \
+        --conf spark.rpc.io.clientThreads=8 \
+        --conf spark.rpc.io.serverThreads=8 \
+        --conf spark.rpc.connect.threads=128 \
+        --conf spark.rpc.message.maxSize=256 \
+        --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.2.0 \
         /app/spark_consumer.py &
     
     SPARK_PID=$!
     
-    # Loop de monitoreo
+    # Loop de monitoreo con re-descubrimiento periódico
+    check_count=0
     while kill -0 $SPARK_PID 2>/dev/null; do
-        sleep 10
+        sleep 5
+        check_count=$((check_count + 1))
+        
+        # Cada 6 iteraciones (30 segundos), re-descubrir masters disponibles
+        if [ $((check_count % 6)) -eq 0 ]; then
+            new_masters=($(discover_masters))
+            new_master_url=$(IFS=, ; echo "${new_masters[*]}")
+            
+            # Si cambió la configuración de masters, reiniciar driver
+            if [ "$new_master_url" != "$master_url" ]; then
+                echo "🔄 Master configuration changed: $master_url -> $new_master_url"
+                echo "   Restarting driver to connect to new masters..."
+                kill $SPARK_PID
+                wait $SPARK_PID 2>/dev/null || true
+                break
+            fi
+        fi
         
         # Verificar si hay un nuevo líder en ZooKeeper
-        current_leader=$(python3 /tmp/zk_get_leader.py "$ZOOKEEPER_URL" "$ZK_ELECTION_PATH")
+        current_leader=$(python3 /tmp/zk_get_leader.py "$ZOOKEEPER_URL" "$ZK_ELECTION_PATH" 2>/dev/null || echo "")
         
         if [ -n "$current_leader" ]; then
              # Si el líder actual NO está en la URL de configuración
@@ -184,22 +219,19 @@ while true; do
                      done
                      
                      if [ "$masters_alive" -gt 0 ]; then
-                         # echo "⚠️  Ignoring ZK leader $current_leader because traditional masters are still active."
                          should_restart=false
                      fi
                  fi
                  
                  if [ "$should_restart" = true ]; then
-                     echo "🔄 Detected new master ($current_leader) and current masters seem down. Restarting driver..."
+                     echo "🔄 Detected new master ($current_leader) - traditional masters are down"
+                     echo "   Restarting driver to connect to new master..."
                      kill $SPARK_PID
                      wait $SPARK_PID 2>/dev/null || true
                      break
                  fi
              fi
         fi
-        
-        # Si estamos usando masters tradicionales pero no responden, y hay un líder en ZK, reiniciar
-        # (Esto ya está cubierto arriba: si master_url tiene master-1, y ZK dice worker-1, reiniciamos)
     done
     
     echo "⚠️ Spark application exited or was killed. Restarting in 5 seconds..."

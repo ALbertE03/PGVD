@@ -199,32 +199,9 @@ services:
       - producer_default
       - hadoop
     restart: always
-  spark-worker-3:
-    build:
-      context: .
-      dockerfile: Dockerfile.worker
-    image: spark-worker-custom
-    container_name: spark-worker-3
-    hostname: spark-worker-3
-    user: root
-    environment:
-      - SPARK_NO_DAEMONIZE=true
-      - SPARK_WORKER_MEMORY=3G
-      - SPARK_WORKER_CORES=2
-      - SPARK_WORKER_WEBUI_PORT=8084
-      - ZOOKEEPER_URL=zookeeper:2181
-    ports:
-      - "8084:8084" # Worker 3 Web UI (puede convertirse en Master UI)
-      - "7081:7077" # Puerto Master alternativo para worker-3
-    depends_on:
-      zookeeper:
-        condition: service_started
-    networks:
-      - producer_default
-      - hadoop
-    restart: always
-
-  # ==================== SPARK DRIVER ====================
+ 
+ 
+ # =================== SPARK DRIVER ====================
 
   spark-driver:
     build:

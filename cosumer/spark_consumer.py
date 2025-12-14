@@ -11,6 +11,7 @@ from pyspark.sql.functions import (
 from pyspark.sql.types import StructType, StructField, StringType, IntegerType
 import requests
 import os
+import time
 
 # Configuración
 KAFKA_BROKER = os.getenv('KAFKA_BROKER_URL', 'kafka:9092')
@@ -47,6 +48,30 @@ def create_spark_session():
         .config("spark.sql.streaming.schemaInference", "true") \
         .config("spark.sql.adaptive.enabled", "true") \
         .config("spark.sql.adaptive.coalescePartitions.enabled", "true") \
+        .config("spark.scheduler.mode", "FAIR") \
+        .config("spark.scheduler.revive.interval", "1s") \
+        .config("spark.scheduler.maxRegisteredResourcesWaitingTime", "120s") \
+        .config("spark.scheduler.minRegisteredResourcesRatio", "0.3") \
+        .config("spark.rpc.retry.wait", "5s") \
+        .config("spark.rpc.numRetries", "10") \
+        .config("spark.network.timeout", "600s") \
+        .config("spark.executor.heartbeatInterval", "30s") \
+        .config("spark.network.timeoutInterval", "240s") \
+        .config("spark.rpc.lookupTimeout", "240s") \
+        .config("spark.core.connection.ack.wait.timeout", "600s") \
+        .config("spark.storage.blockManagerTimeoutIntervalMs", "600000") \
+        .config("spark.blacklist.enabled", "false") \
+        .config("spark.task.maxFailures", "20") \
+        .config("spark.stage.maxConsecutiveAttempts", "20") \
+        .config("spark.streaming.kafka.consumer.poll.ms", "512") \
+        .config("spark.streaming.backpressure.enabled", "true") \
+        .config("spark.streaming.kafka.maxRetries", "5") \
+        .config("spark.streaming.receiver.writeAheadLog.enable", "true") \
+        .config("spark.executor.allowSparkContext", "true") \
+        .config("spark.rpc.io.clientThreads", "8") \
+        .config("spark.rpc.io.serverThreads", "8") \
+        .config("spark.rpc.connect.threads", "128") \
+        .config("spark.rpc.message.maxSize", "256") \
         .getOrCreate()
     
     # Ajustar particiones dinámicamente basado en cores reales
@@ -60,6 +85,8 @@ def create_spark_session():
     print(f"✅ Spark configurado con {total_cores} cores totales")
     print(f"   - Shuffle partitions: {total_cores}")
     print(f"   - Default parallelism: {total_cores}")
+    print(f"   - Configuración de tolerancia a fallos: ACTIVADA")
+    print(f"   - Timeouts extendidos para reconexiones: ACTIVADO")
     
     # Configurar nivel de logging
     spark.sparkContext.setLogLevel("ERROR")
@@ -82,6 +109,13 @@ def read_kafka_stream(spark, topic, schema):
         .option("subscribe", topic) \
         .option("startingOffsets", "latest") \
         .option("failOnDataLoss", "false") \
+        .option("kafka.session.timeout.ms", "60000") \
+        .option("kafka.request.timeout.ms", "70000") \
+        .option("kafka.connections.max.idle.ms", "300000") \
+        .option("kafka.max.poll.interval.ms", "600000") \
+        .option("kafka.heartbeat.interval.ms", "10000") \
+        .option("kafka.metadata.max.age.ms", "30000") \
+        .option("maxOffsetsPerTrigger", "10000") \
         .load()
     
     # Parsear JSON
@@ -147,6 +181,10 @@ def main():
     print("=" * 80)
     print("🧬 INICIANDO CONSUMIDOR DE DATOS GENÓMICOS CON SPARK STREAMING")
     print("=" * 80)
+    
+    # Esperar un momento para que los servicios estén listos
+    print("\n⏳ Esperando inicialización de servicios...")
+    time.sleep(10)
     
     # Crear sesión de Spark
     spark = create_spark_session()
