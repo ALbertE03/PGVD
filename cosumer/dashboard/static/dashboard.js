@@ -197,6 +197,8 @@ function initializeCharts() {
             }
         }
     });
+
+
 }
 
 // Update all data
@@ -224,6 +226,9 @@ async function updateDashboard() {
         if (cluster.hdfs) {
             updateHdfsMetrics(cluster.hdfs);
         }
+        
+        // Update Spark Jobs Performance Metrics
+        updateSparkJobs();
 
     } catch (error) {
         console.error('Error updating dashboard:', error);
@@ -387,6 +392,200 @@ function updateSparkTopology(sparkData) {
 
     workersContainer.innerHTML = html;
 }
+
+function updateSparkJobs() {
+    fetch('/api/spark_jobs')
+        .then(r => r.json())
+        .then(data => {
+            if (data.error) {
+                console.warn('Spark Jobs API error:', data.error);
+                return;
+            }
+
+            // Helper function to format bytes
+            function formatBytes(bytes) {
+                if (!bytes || bytes === 0) return '0 B';
+                const k = 1024;
+                const sizes = ['B', 'KB', 'MB', 'GB'];
+                const i = Math.floor(Math.log(bytes) / Math.log(k));
+                return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+            }
+
+            // Helper function to format duration
+            function formatDuration(ms) {
+                if (ms === null || ms === undefined) return 'N/A';
+                if (ms === 0) return '< 0.01s';
+                const seconds = (ms / 1000);
+                if (seconds < 1) return `${ms.toFixed(0)}ms`;
+                if (seconds < 60) return `${seconds.toFixed(2)}s`;
+                const minutes = Math.floor(seconds / 60);
+                const remainingSecs = (seconds % 60).toFixed(0);
+                return `${minutes}m ${remainingSecs}s`;
+            }
+
+            // Update Application Info
+            const appInfo = document.getElementById('spark-app-info');
+            if (appInfo && data.appName) {
+                appInfo.innerHTML = `
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <div>
+                            <span style="color:#3b82f6; font-weight:600;">Application:</span>
+                            <span style="color:#e2e8f0; margin-left:8px;">${data.appName}</span>
+                        </div>
+                        <div>
+                            <span style="color:#3b82f6; font-weight:600;">App ID:</span>
+                            <span style="color:#94a3b8; margin-left:8px; font-family:monospace; font-size:0.85em;">${data.appId || 'N/A'}</span>
+                        </div>
+                    </div>
+                `;
+            }
+
+            // Update Jobs Table
+            const jobsTable = document.getElementById('spark-jobs-table');
+            if (jobsTable && data.jobs && data.jobs.length > 0) {
+                let tableHtml = `
+                    <table style="width:100%; border-collapse:collapse; font-size:0.85em;">
+                        <thead>
+                            <tr style="background:#0f1419; border-bottom:2px solid #2d3748;">
+                                <th style="padding:12px; text-align:left; color:#3b82f6; font-weight:600;">Job ID</th>
+                                <th style="padding:12px; text-align:left; color:#3b82f6; font-weight:600;">Estado</th>
+                                <th style="padding:12px; text-align:left; color:#3b82f6; font-weight:600;">Nombre</th>
+                                <th style="padding:12px; text-align:center; color:#3b82f6; font-weight:600;">Tareas</th>
+                                <th style="padding:12px; text-align:center; color:#3b82f6; font-weight:600;">Completadas</th>
+                                <th style="padding:12px; text-align:center; color:#3b82f6; font-weight:600;">Fallidas</th>
+                                <th style="padding:12px; text-align:right; color:#3b82f6; font-weight:600;">Duración</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                `;
+
+                // La API ya retorna solo 5 jobs, pero por si acaso
+                data.jobs.forEach((job, index) => {
+                    const statusColors = {
+                        'SUCCEEDED': '#10b981',
+                        'RUNNING': '#3b82f6',
+                        'FAILED': '#ef4444',
+                        'UNKNOWN': '#6b7280'
+                    };
+                    const statusColor = statusColors[job.status] || statusColors['UNKNOWN'];
+                    const bgColor = index % 2 === 0 ? '#1a1f2e' : '#0f1419';
+                    const progress = job.numTasks > 0 ? (job.numCompletedTasks / job.numTasks * 100).toFixed(0) : 0;
+
+                    tableHtml += `
+                        <tr style="background:${bgColor}; border-bottom:1px solid #2d3748;">
+                            <td style="padding:12px; color:#e2e8f0; font-weight:600;">${job.jobId}</td>
+                            <td style="padding:12px;">
+                                <span style="display:inline-block; padding:4px 10px; border-radius:4px; font-size:0.8em; font-weight:700; color:${statusColor}; background:${statusColor}25; border:1px solid ${statusColor};">
+                                    ${job.status}
+                                </span>
+                            </td>
+                            <td style="padding:12px; color:#94a3b8; max-width:300px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${job.name}">${job.name}</td>
+                            <td style="padding:12px; text-align:center; color:#e2e8f0;">${job.numTasks}</td>
+                            <td style="padding:12px; text-align:center;">
+                                <div style="color:#10b981; font-weight:600;">${job.numCompletedTasks}</div>
+                                <div style="font-size:0.75em; color:#6b7280;">${progress}%</div>
+                            </td>
+                            <td style="padding:12px; text-align:center; color:${job.numFailedTasks > 0 ? '#ef4444' : '#6b7280'}; font-weight:${job.numFailedTasks > 0 ? '700' : '400'};">${job.numFailedTasks}</td>
+                            <td style="padding:12px; text-align:right; color:#e2e8f0; font-family:monospace;">${formatDuration(job.duration)}</td>
+                        </tr>
+                    `;
+                });
+
+                tableHtml += `
+                        </tbody>
+                    </table>
+                    <div style="text-align:center; margin-top:10px; color:#6b7280; font-size:0.85em;">
+                        Mostrando los últimos 5 jobs más recientes
+                    </div>
+                `;
+                jobsTable.innerHTML = tableHtml;
+            } else if (jobsTable) {
+                jobsTable.innerHTML = '<div style="color:#94a3b8; font-style:italic; padding:20px; text-align:center;">No jobs available</div>';
+            }
+
+            // Update Executors Table
+            const executorsTable = document.getElementById('spark-executors-table');
+            if (executorsTable && data.executors && data.executors.length > 0) {
+                let tableHtml = `
+                    <table style="width:100%; border-collapse:collapse; font-size:0.85em;">
+                        <thead>
+                            <tr style="background:#0f1419; border-bottom:2px solid #2d3748;">
+                                <th style="padding:12px; text-align:left; color:#10b981; font-weight:600;">Executor ID</th>
+                                <th style="padding:12px; text-align:left; color:#10b981; font-weight:600;">Host:Port</th>
+                                <th style="padding:12px; text-align:center; color:#10b981; font-weight:600;">Cores</th>
+                                <th style="padding:12px; text-align:center; color:#10b981; font-weight:600;">Tareas Activas</th>
+                                <th style="padding:12px; text-align:center; color:#10b981; font-weight:600;">Completadas</th>
+                                <th style="padding:12px; text-align:center; color:#10b981; font-weight:600;">Fallidas</th>
+                                <th style="padding:12px; text-align:right; color:#10b981; font-weight:600;">Memoria (On-Heap)</th>
+                                <th style="padding:12px; text-align:right; color:#10b981; font-weight:600;">GC Time</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                `;
+
+                data.executors.forEach((exec, index) => {
+                    const bgColor = index % 2 === 0 ? '#1a1f2e' : '#0f1419';
+                    const memPercent = exec.totalOnHeapMemory > 0 ? ((exec.usedOnHeapMemory / exec.totalOnHeapMemory) * 100).toFixed(1) : 0;
+                    const gcPercent = exec.totalDuration > 0 ? ((exec.totalGCTime / exec.totalDuration) * 100).toFixed(1) : 0;
+                    const statusColor = exec.isActive ? '#10b981' : '#ef4444';
+                    
+                    // Determinar nivel de alerta de memoria
+                    let memColor = '#8b5cf6';
+                    let memWarning = '';
+                    if (memPercent > 90) {
+                        memColor = '#ef4444';
+                        memWarning = '⚠️ CRÍTICO';
+                    } else if (memPercent > 75) {
+                        memColor = '#f59e0b';
+                        memWarning = '⚠️ ALTO';
+                    }
+
+                    tableHtml += `
+                        <tr style="background:${bgColor}; border-bottom:1px solid #2d3748;">
+                            <td style="padding:12px; color:#e2e8f0; font-weight:600;">
+                                <div style="display:flex; align-items:center; gap:8px;">
+                                    <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:${statusColor};"></span>
+                                    ${exec.id}
+                                </div>
+                            </td>
+                            <td style="padding:12px; color:#94a3b8; font-family:monospace; font-size:0.85em;">${exec.hostPort}</td>
+                            <td style="padding:12px; text-align:center; color:#e2e8f0;">${exec.totalCores}</td>
+                            <td style="padding:12px; text-align:center;">
+                                <span style="color:#3b82f6; font-weight:600;">${exec.activeTasks}</span>
+                                <span style="color:#6b7280;"> / ${exec.maxTasks}</span>
+                            </td>
+                            <td style="padding:12px; text-align:center; color:#10b981; font-weight:600;">${exec.completedTasks}</td>
+                            <td style="padding:12px; text-align:center; color:${exec.failedTasks > 0 ? '#ef4444' : '#6b7280'}; font-weight:${exec.failedTasks > 0 ? '700' : '400'};">${exec.failedTasks}</td>
+                            <td style="padding:12px; text-align:right;">
+                                <div style="color:${memColor}; font-weight:600; font-family:monospace;">${formatBytes(exec.usedOnHeapMemory)} / ${formatBytes(exec.totalOnHeapMemory)}</div>
+                                <div style="font-size:0.75em; color:${memColor}; font-weight:${memWarning ? '700' : '400'};">${memPercent}% ${memWarning}</div>
+                            </td>
+                            <td style="padding:12px; text-align:right;">
+                                <div style="color:${gcPercent > 20 ? '#ef4444' : '#f59e0b'}; font-weight:600;">${gcPercent}%</div>
+                                <div style="font-size:0.75em; color:#6b7280;">${(exec.totalGCTime / 1000).toFixed(2)}s</div>
+                            </td>
+                        </tr>
+                    `;
+                });
+
+                tableHtml += `
+                        </tbody>
+                    </table>
+                `;
+                executorsTable.innerHTML = tableHtml;
+                
+                // Actualizar gráfico de comparación de executors
+
+            } else if (executorsTable) {
+                executorsTable.innerHTML = '<div style="color:#94a3b8; font-style:italic; padding:20px; text-align:center;">No executors available</div>';
+            }
+        })
+        .catch(error => {
+            console.error('Error fetching Spark jobs:', error);
+        });
+}
+
+
 
 function updateHdfsMetrics(hdfs) {
     // Helper function to format bytes to GB/TB

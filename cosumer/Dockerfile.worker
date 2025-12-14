@@ -9,11 +9,11 @@ RUN apt-get update && \
 
 RUN pip install --no-cache-dir requests kazoo
 
-# Pre-descargar paquetes Kafka de Maven directamente a /opt/spark/jars
+# Pre-descargar paquetes Kafka de Maven (misma versión que driver: Spark 4.0.0 / Scala 2.13)
 RUN cd /opt/spark/jars && \
-    curl -L -O "https://repo1.maven.org/maven2/org/apache/kafka/kafka-clients/3.5.1/kafka-clients-3.5.1.jar" && \
-    curl -L -O "https://repo1.maven.org/maven2/org/apache/spark/spark-sql-kafka-0-10_2.13/4.0.0-preview2/spark-sql-kafka-0-10_2.13-4.0.0-preview2.jar" && \
-    curl -L -O "https://repo1.maven.org/maven2/org/apache/spark/spark-token-provider-kafka-0-10_2.13/4.0.0-preview2/spark-token-provider-kafka-0-10_2.13-4.0.0-preview2.jar" && \
+    curl -L -O "https://repo1.maven.org/maven2/org/apache/kafka/kafka-clients/3.6.0/kafka-clients-3.6.0.jar" && \
+    curl -L -O "https://repo1.maven.org/maven2/org/apache/spark/spark-sql-kafka-0-10_2.13/4.0.0/spark-sql-kafka-0-10_2.13-4.0.0.jar" && \
+    curl -L -O "https://repo1.maven.org/maven2/org/apache/spark/spark-token-provider-kafka-0-10_2.13/4.0.0/spark-token-provider-kafka-0-10_2.13-4.0.0.jar" && \
     curl -L -O "https://repo1.maven.org/maven2/org/apache/commons/commons-pool2/2.12.0/commons-pool2-2.12.0.jar"
 
 

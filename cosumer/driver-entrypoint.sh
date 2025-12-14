@@ -156,24 +156,21 @@ while true; do
         --conf spark.dynamicAllocation.enabled=false \
         --conf spark.network.timeout=600s \
         --conf spark.executor.heartbeatInterval=30s \
-        --conf spark.rpc.retry.wait=5s \
-        --conf spark.rpc.numRetries=10 \
         --conf spark.rpc.lookupTimeout=240s \
         --conf spark.core.connection.ack.wait.timeout=600s \
         --conf spark.scheduler.maxRegisteredResourcesWaitingTime=120s \
         --conf spark.scheduler.minRegisteredResourcesRatio=0.3 \
         --conf spark.scheduler.revive.interval=1s \
-        --conf spark.blacklist.enabled=false \
+        --conf spark.excludeOnFailure.enabled=false \
         --conf spark.task.maxFailures=20 \
         --conf spark.stage.maxConsecutiveAttempts=20 \
         --conf spark.storage.blockManagerTimeoutIntervalMs=600000 \
-        --conf spark.network.timeoutInterval=240s \
         --conf spark.executor.allowSparkContext=true \
         --conf spark.rpc.io.clientThreads=8 \
         --conf spark.rpc.io.serverThreads=8 \
         --conf spark.rpc.connect.threads=128 \
         --conf spark.rpc.message.maxSize=256 \
-        --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.2.0 \
+        --jars /opt/spark/jars/spark-sql-kafka-0-10_2.13-4.0.0.jar \
         /app/spark_consumer.py &
     
     SPARK_PID=$!

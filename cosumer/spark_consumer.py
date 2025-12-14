@@ -52,15 +52,12 @@ def create_spark_session():
         .config("spark.scheduler.revive.interval", "1s") \
         .config("spark.scheduler.maxRegisteredResourcesWaitingTime", "120s") \
         .config("spark.scheduler.minRegisteredResourcesRatio", "0.3") \
-        .config("spark.rpc.retry.wait", "5s") \
-        .config("spark.rpc.numRetries", "10") \
         .config("spark.network.timeout", "600s") \
         .config("spark.executor.heartbeatInterval", "30s") \
-        .config("spark.network.timeoutInterval", "240s") \
         .config("spark.rpc.lookupTimeout", "240s") \
         .config("spark.core.connection.ack.wait.timeout", "600s") \
         .config("spark.storage.blockManagerTimeoutIntervalMs", "600000") \
-        .config("spark.blacklist.enabled", "false") \
+        .config("spark.excludeOnFailure.enabled", "false") \
         .config("spark.task.maxFailures", "20") \
         .config("spark.stage.maxConsecutiveAttempts", "20") \
         .config("spark.streaming.kafka.consumer.poll.ms", "512") \

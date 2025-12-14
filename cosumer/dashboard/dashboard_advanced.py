@@ -587,5 +587,119 @@ def receive_metrics():
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
 
+@app.route('/api/spark_jobs')
+def spark_jobs():
+    """API para obtener métricas de jobs y executors de Spark Driver con memoria correcta"""
+    base_url = os.getenv('SPARK_DRIVER_URL', 'http://spark-driver:4040')
+    result = {
+        'appName': None,
+        'appId': None,
+        'jobs': [],
+        'executors': [],
+        'error': None
+    }
+    
+    try:
+        apps_resp = requests.get(f"{base_url}/api/v1/applications", timeout=2)
+        if apps_resp.ok:
+            apps = apps_resp.json()
+            if apps and len(apps) > 0:
+                app_id = apps[0].get('id')
+                result['appId'] = app_id
+                result['appName'] = apps[0].get('name', 'Unknown Application')
+                
+                # Obtener jobs (últimos 30)
+                jobs_resp = requests.get(f"{base_url}/api/v1/applications/{app_id}/jobs", timeout=2)
+                if jobs_resp.ok:
+                    jobs_data = jobs_resp.json()
+                    # Ordenar por jobId descendente y tomar solo los últimos 5
+                    sorted_jobs = sorted(jobs_data, key=lambda x: x.get('jobId', 0), reverse=True)[:5]
+                    
+                    for j in sorted_jobs:
+                        submission = j.get('submissionTime')
+                        completion = j.get('completionTime')
+                        
+                        # Calcular duración si ambas fechas existen
+                        duration = None
+                        if completion and submission:
+                            try:
+                                # Si son timestamps numéricos (milisegundos)
+                                if isinstance(completion, (int, float)) and isinstance(submission, (int, float)):
+                                    duration = completion - submission
+                                # Si son strings ISO8601, parsear y calcular
+                                elif isinstance(completion, str) and isinstance(submission, str):
+                                    from datetime import datetime
+                                    # Parsear timestamps ISO8601 (formato: 2025-12-14T16:34:30.682GMT)
+                                    comp_dt = datetime.strptime(completion.replace('GMT', '+0000'), '%Y-%m-%dT%H:%M:%S.%f%z')
+                                    sub_dt = datetime.strptime(submission.replace('GMT', '+0000'), '%Y-%m-%dT%H:%M:%S.%f%z')
+                                    duration = int((comp_dt - sub_dt).total_seconds() * 1000)  # En milisegundos
+                            except Exception as e:
+                                print(f"Error calculando duración: {e}")
+                                pass
+                        
+                        result['jobs'].append({
+                            'jobId': j.get('jobId'),
+                            'name': j.get('name', 'Unknown Job'),
+                            'status': j.get('status', 'UNKNOWN'),
+                            'numTasks': j.get('numTasks', 0),
+                            'numActiveTasks': j.get('numActiveTasks', 0),
+                            'numCompletedTasks': j.get('numCompletedTasks', 0),
+                            'numSkippedTasks': j.get('numSkippedTasks', 0),
+                            'numFailedTasks': j.get('numFailedTasks', 0),
+                            'duration': duration,
+                            'submissionTime': submission,
+                            'completionTime': completion
+                        })
+                
+                # Obtener executors con métricas de memoria correctas
+                exec_resp = requests.get(f"{base_url}/api/v1/applications/{app_id}/executors", timeout=2)
+                if exec_resp.ok:
+                    exec_data = exec_resp.json()
+                    for e in exec_data:
+                        if e.get('id') == 'driver':
+                            continue
+                        
+                        # Obtener métricas de memoria (on-heap y off-heap)
+                        memory_metrics = e.get('memoryMetrics', {})
+                        used_on_heap = memory_metrics.get('usedOnHeapStorageMemory', 0)
+                        used_off_heap = memory_metrics.get('usedOffHeapStorageMemory', 0)
+                        total_on_heap = e.get('maxMemory', 0)
+                        total_off_heap = memory_metrics.get('totalOffHeapStorageMemory', 0)
+                        
+                        # Calcular tiempo promedio por tarea
+                        completed_tasks = e.get('completedTasks', 0)
+                        total_duration = e.get('totalDuration', 0)
+                        avg_task_duration = (total_duration / completed_tasks) if completed_tasks > 0 else 0
+                        
+                        result['executors'].append({
+                            'id': e.get('id'),
+                            'hostPort': e.get('hostPort'),
+                            'isActive': e.get('isActive', True),
+                            'rddBlocks': e.get('rddBlocks', 0),
+                            'usedOnHeapMemory': used_on_heap,
+                            'usedOffHeapMemory': used_off_heap,
+                            'totalOnHeapMemory': total_on_heap,
+                            'totalOffHeapMemory': total_off_heap,
+                            'diskUsed': e.get('diskUsed', 0),
+                            'totalCores': e.get('totalCores', 0),
+                            'maxTasks': e.get('maxTasks', 0),
+                            'activeTasks': e.get('activeTasks', 0),
+                            'failedTasks': e.get('failedTasks', 0),
+                            'completedTasks': completed_tasks,
+                            'totalTasks': e.get('totalTasks', 0),
+                            'totalDuration': total_duration,
+                            'totalGCTime': e.get('totalGCTime', 0),
+                            'totalInputBytes': e.get('totalInputBytes', 0),
+                            'totalShuffleRead': e.get('totalShuffleRead', 0),
+                            'totalShuffleWrite': e.get('totalShuffleWrite', 0),
+                            'avgTaskDuration': avg_task_duration
+                        })
+                    
+    except Exception as e:
+        result['error'] = str(e)
+    
+    return jsonify(result)
+
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=False, threaded=True)
