@@ -12,6 +12,8 @@ from pyspark.sql.types import StructType, StructField, StringType, IntegerType
 import requests
 import os
 import time
+from collections import Counter
+import math
 
 # Configuración
 KAFKA_BROKER = os.getenv('KAFKA_BROKER_URL', 'kafka:9092')
@@ -126,8 +128,121 @@ def read_kafka_stream(spark, topic, schema):
     
     return parsed_df
 
+def normalize_chromosome(chrom):
+    if chrom is None:
+        return None
+    chrom = str(chrom).upper().replace("CHR", "")
+    return chrom
+
+def extract_genetic_data(snp_data_row, genotype_from_batch):
+    """Extrae datos genéticos en formato esperado por el dashboard
+    snp_data_row puede ser un Spark Row o un diccionario"""
+    if not snp_data_row:
+        return None
+    
+    try:
+        # Convertir Spark Row a diccionario si es necesario
+        if hasattr(snp_data_row, 'asDict'):
+            # Es un Spark Row
+            snp_dict = snp_data_row.asDict()
+        elif isinstance(snp_data_row, dict):
+            # Ya es un diccionario
+            snp_dict = snp_data_row
+        else:
+            # Intentar acceso directo como atributos
+            snp_dict = {
+                'chromosome': getattr(snp_data_row, 'chromosome', '0'),
+                'position': getattr(snp_data_row, 'position', 0),
+                'genotype': getattr(snp_data_row, 'genotype', '0/0')
+            }
+        
+        # DEBUG: Loguear datos reales recibidos
+        print(f"🔍 DEBUG - SNP Data recibido: chromosome={snp_dict.get('chromosome')}, "
+              f"position={snp_dict.get('position')}, "
+              f"genotype_en_snp={snp_dict.get('genotype')}, "
+              f"genotype_parametro={genotype_from_batch}")
+        
+        # Detectar tipo de variante (simplificado)
+        def get_variant_type(snp_data):
+            return "SNP"
+        
+        # Mapeo simplificado de genes por cromosoma y posición
+        def get_gene_name(chromosome, position):
+            # Mapeo más flexible de genes por cromosoma
+            GENE_MAP = {
+                # Gen -> (cromosoma_start, cromosoma_end)
+                "BRCA1": (17, 43000000, 43500000),
+                "BRCA2": (13, 32800000, 33400000),
+                "TP53": (17, 7000000, 7600000),
+                "EGFR": (7, 55000000, 56500000),
+                "KRAS": (12, 25200000, 25400000),
+                "BRAF": (7, 140700000, 140900000),
+                "FMR1": ("X",  153000000, 153500000),
+                "AR":("X", 66700000, 67000000),
+                "DMD": ("X", 48700000, 48800000),
+                "SRY":   ("Y", 2650000, 2800000),
+                "TSPY":  ("Y", 9500000, 10500000),
+                "DAZ":   ("Y", 23500000, 24500000),
+                "RBMY":  ("Y", 22000000, 22500000),
+                "USP9Y": ("Y", 12500000, 13000000),
+                "ZFY":   ("Y", 2850000, 3000000),
+                # Mitocondrial (MT)
+                "MT-ND1":  ("MT", 3307, 4262),
+                "MT-ND2":  ("MT", 4470, 5511),
+                "MT-CO1":  ("MT", 5904, 7445),
+                "MT-CO2":  ("MT", 7586, 8269),
+                "MT-ATP8": ("MT", 8366, 8572),
+                "MT-ATP6": ("MT", 8527, 9207),
+                "MT-CO3":  ("MT", 9207, 9990),
+                "MT-ND3":  ("MT", 10059, 10404),
+                "MT-ND4":  ("MT", 10760, 12137),
+                "MT-ND5":  ("MT", 12337, 14148),
+                "MT-CYB":  ("MT", 14747, 15887),
+                "MT-ND6":  ("MT", 14149, 14673),
+                "MT-RNR1": ("MT", 648, 1601),
+                "MT-RNR2": ("MT", 1671, 3229),
+
+            }
+            
+            try:
+                chrom = normalize_chromosome(chromosome)
+                pos = int(position) if position is not None else None
+
+                if chrom is None or pos is None:
+                    return "Unknown"
+
+                for gene, (c, start, end) in GENE_MAP.items():
+                    if chrom == c and start <= pos <= end:
+                        return gene
+
+                # fallback útil para debug
+                return f"Chr{chrom}"
+            except Exception as e:
+                print(f"  ⚠️ Error en mapeo de genes: {e}")
+                pass
+            
+            return "Unknown"
+        
+        # Extraer valores de forma segura
+        chromosome = snp_dict.get("chromosome", "0")
+        position = snp_dict.get("position", 0)
+        
+        genetic_data = {
+            "variant_type": get_variant_type(snp_dict),
+            "gene": get_gene_name(chromosome, position),
+            "genotype": genotype_from_batch if genotype_from_batch else "0/0",
+            "chromosome": str(chromosome),
+            "position": int(position) if position else 0,
+            "quality": 99
+        }
+        
+        return genetic_data
+    except Exception as e:
+        print(f"⚠️ Error extrayendo datos genéticos: {e}")
+        return None
+
 def calculate_and_send_metrics(batch_df, batch_id, member_type):
-    """Calcula métricas del batch y las envía al dashboard - Incluye tiempo de procesamiento"""
+    """Calcula métricas del batch y las envía al dashboard - INCLUYENDO DATOS GENÉTICOS"""
     if batch_df.isEmpty():
         return
     
@@ -152,12 +267,41 @@ def calculate_and_send_metrics(batch_df, batch_id, member_type):
                     timeout=5
                 )
         
-        # Solo contamos registros para la gráfica de velocidad
-        total_records = batch_df.count()
+        # Contar registros válidos (con datos SNP)
+        total_records = batch_df.filter(col("snp_data").isNotNull()).count()
+        
+        # ========== NUEVO: EXTRAER DATOS GENÉTICOS ==========
+        genetic_data = None
+        if total_records > 0:
+            # Obtener primera fila con datos SNP
+            sample_row = batch_df.filter(col("snp_data").isNotNull()).first()
+            
+            if sample_row:
+                sample_dict = sample_row.asDict()
+                snp_data = sample_dict.get("snp_data")  # Esto es un Spark Row
+                
+                # Si snp_data es un Spark Row, convertirlo a dict
+                if snp_data and hasattr(snp_data, 'asDict'):
+                    snp_data_dict = snp_data.asDict()
+                elif isinstance(snp_data, dict):
+                    snp_data_dict = snp_data
+                else:
+                    snp_data_dict = {}
+                
+                # ⚠️ El genotype ESTÁ DENTRO de snp_data, no fuera
+                genotype_from_snp = snp_data_dict.get("genotype", "0/0")
+                genotype_from_batch = sample_dict.get("genotype", "0/0")
+                
+                # Usar el genotype de snp_data si está disponible, si no el del nivel superior
+                genotype = genotype_from_snp if genotype_from_snp != "0/0" else genotype_from_batch
+                
+                # Extraer datos genéticos pasando snp_data como dict
+                genetic_data = extract_genetic_data(snp_data_dict, genotype)
         
         # Calcular tiempo de procesamiento en milisegundos
         processing_time = (time.time() - start_time) * 1000
         
+        # Construir payload con genetic_data
         metrics = {
             'member_type': member_type,
             'batch_id': batch_id,
@@ -165,6 +309,11 @@ def calculate_and_send_metrics(batch_df, batch_id, member_type):
             'total_records': total_records,
             'processing_time': processing_time
         }
+        
+        # ========== NUEVO: AGREGAR DATOS GENÉTICOS AL PAYLOAD ==========
+        if genetic_data:
+            metrics['genetic_data'] = genetic_data
+            print(f"🧬 [{member_type}] Datos genéticos: Gene={genetic_data.get('gene')}, Genotype={genetic_data.get('genotype')}")
         
         # Enviar métricas al dashboard
         response = requests.post(
@@ -174,7 +323,9 @@ def calculate_and_send_metrics(batch_df, batch_id, member_type):
         )
         
         if response.status_code == 200:
-            print(f"📊 [{member_type}] Batch {batch_id}: {total_records} registros procesados en {processing_time:.2f}ms")
+            print(f"📊 [{member_type}] Batch {batch_id}: {total_records} registros en {processing_time:.2f}ms")
+            if genetic_data:
+                print(f"   ✅ Datos genéticos enviados al dashboard")
         else:
             print(f"⚠️  Error enviando métricas [{member_type}]: {response.status_code}")
             
@@ -182,6 +333,365 @@ def calculate_and_send_metrics(batch_df, batch_id, member_type):
         print(f"❌ Error calculando/enviando métricas [{member_type}]: {e}")
         import traceback
         traceback.print_exc()
+
+def calculate_time_window_metrics(df, member_type, window_duration_minutes=1):
+    """Calcula métricas en ventanas de tiempo (1 min, 5 min, 1 hora, 1 día)
+    Esto permite ver tendencias y patrones a diferentes escalas de tiempo"""
+    
+    try:
+        # Definir múltiples ventanas de tiempo
+        windows_config = [
+            ("1_minute", "1 minute"),
+            ("5_minutes", "5 minutes"),
+            ("15_minutes", "15 minutes"),
+            ("1_hour", "1 hour"),
+        ]
+        
+        for window_name, window_spec in windows_config:
+            try:
+                # Aplicar window a los datos
+                windowed_df = df.filter(col("snp_data").isNotNull()) \
+                    .withColumn("window", window(col("processed_at"), window_spec)) \
+                    .groupBy("window", "member_type") \
+                    .agg(
+                        count("*").alias("total_records"),
+                        count(col("snp_data")).alias("valid_records"),
+                        avg(col("processed_at")).alias("avg_timestamp")
+                    ) \
+                    .collect()
+                
+                # Procesar resultados de la ventana
+                for row in windowed_df:
+                    if row.total_records > 0:
+                        window_metrics = {
+                            'message_type': 'TIME_WINDOW_METRICS',
+                            'window_name': window_name,
+                            'window_duration': window_spec,
+                            'member_type': member_type,
+                            'total_records': int(row.total_records),
+                            'valid_records': int(row.valid_records),
+                            'timestamp': str(row.avg_timestamp if row.avg_timestamp else current_timestamp())
+                        }
+                        
+                        # Enviar métricas de ventana al dashboard
+                        try:
+                            response = requests.post(
+                                f"{DASHBOARD_URL}/api/metrics",
+                                json=window_metrics,
+                                timeout=5
+                            )
+                            if response.status_code == 200:
+                                print(f"⏱️  [{member_type}] {window_name}: {row.total_records} registros")
+                        except Exception as e:
+                            print(f"⚠️  Error enviando métricas de ventana: {e}")
+                
+            except Exception as e:
+                print(f"⚠️  Error en ventana {window_name}: {e}")
+    
+    except Exception as e:
+        print(f"❌ Error calculando métricas de ventana de tiempo: {e}")
+
+def calculate_chromosome_distribution(df, member_type):
+    """Analiza la distribución de variantes por cromosoma"""
+    try:
+        chromosome_stats = df.filter(col("snp_data").isNotNull()) \
+            .select(
+                col("snp_data.chromosome").alias("chromosome"),
+                col("snp_data.genotype").alias("genotype")
+            ) \
+            .groupBy("chromosome", "genotype") \
+            .agg(count("*").alias("count")) \
+            .collect()
+        
+        if chromosome_stats:
+            # Agrupar por cromosoma
+            chrom_distribution = {}
+            for row in chromosome_stats:
+                row_dict = row.asDict() if hasattr(row, 'asDict') else dict(row)
+                chrom = str(row_dict.get('chromosome', 'Unknown')) if row_dict.get('chromosome') else "Unknown"
+                genotype = row_dict.get('genotype', '0/0') if row_dict.get('genotype') else "0/0"
+                cnt = int(row_dict.get('count', 0))
+                
+                if chrom not in chrom_distribution:
+                    chrom_distribution[chrom] = {'total': 0, 'genotypes': {}}
+                
+                chrom_distribution[chrom]['total'] += cnt
+                chrom_distribution[chrom]['genotypes'][genotype] = cnt
+            
+            # Enviar al dashboard
+            chromo_metrics = {
+                'message_type': 'CHROMOSOME_DISTRIBUTION',
+                'member_type': member_type,
+                'chromosome_distribution': chrom_distribution,
+                'timestamp': str(current_timestamp())
+            }
+            
+            try:
+                response = requests.post(
+                    f"{DASHBOARD_URL}/api/metrics",
+                    json=chromo_metrics,
+                    timeout=5
+                )
+                if response.status_code == 200:
+                    print(f"🧬 [{member_type}] Distribución de cromosomas enviada")
+            except Exception as e:
+                print(f"⚠️  Error enviando distribución de cromosomas: {e}")
+    
+    except Exception as e:
+        print(f"❌ Error calculando distribución de cromosomas: {e}")
+
+
+def classify_genotype(genotype):
+    if not genotype or len(genotype) != 2:
+        return "invalid"
+
+    a, b = genotype[0], genotype[1]
+
+    if a == b:
+        if a.isupper():
+            return "dominant"
+        else:
+            return "recessive"
+    else:
+        return "heterozygous"
+
+def calculate_individual_heterozygosity(df, member_type):
+    """
+    Calcula heterocigosis por individuo (person_id)
+    """
+    try:
+        rows = (
+            df.filter(col("snp_data").isNotNull())
+              .select(
+                  col("person_id"),
+                  col("snp_data.genotype").alias("genotype")
+              )
+              .collect()
+        )
+
+        if not rows:
+            return
+
+        per_person = {}
+
+        for row in rows:
+            pid = row.person_id
+            gt = row.genotype
+            if not pid or not gt or len(gt) != 2:
+                continue
+
+            if pid not in per_person:
+                per_person[pid] = {"hetero": 0, "homo": 0}
+
+            if gt[0] == gt[1]:
+                per_person[pid]["homo"] += 1
+            else:
+                per_person[pid]["hetero"] += 1
+
+        for pid, counts in per_person.items():
+            total = counts["hetero"] + counts["homo"]
+            if total == 0:
+                continue
+
+            payload = {
+                "message_type": "GENETIC_INDIVIDUAL",
+                "member_type": member_type,
+                "person_id": pid,
+                "heterozygous_pct": round(100 * counts["hetero"] / total, 2),
+                "homozygous_pct": round(100 * counts["homo"] / total, 2),
+                "total_snps": total,
+                "timestamp": str(current_timestamp())
+            }
+
+            requests.post(
+                f"{DASHBOARD_URL}/api/metrics",
+                json=payload,
+                timeout=5
+            )
+
+            print(
+                f"🧍 [{member_type}] {pid} → "
+                f"HET={payload['heterozygous_pct']}% | "
+                f"HOM={payload['homozygous_pct']}%"
+            )
+
+    except Exception as e:
+        print(f"❌ Error heterocigosis individual: {e}")
+
+def calculate_population_heterozygosity(df, member_type):
+    """
+    Métrica poblacional: hetero vs homo por grupo
+    """
+    try:
+        genotypes = (
+            df.filter(col("snp_data").isNotNull())
+              .select(col("snp_data.genotype").alias("genotype"))
+              .collect()
+        )
+
+        if not genotypes:
+            return
+
+        hetero = 0
+        homo = 0
+
+        for row in genotypes:
+            gt = row.genotype
+            if not gt or len(gt) != 2:
+                continue
+
+            if gt[0] == gt[1]:
+                homo += 1
+            else:
+                hetero += 1
+
+        total = hetero + homo
+        if total == 0:
+            return
+
+        p = hetero/total
+        q = homo / total
+        He = round(2*p*q, 4)
+
+        timestamp = str(current_timestamp())
+
+
+        payload = {
+            "message_type": "GENETIC_POPULATION",
+            "member_type": member_type,
+            "heterozygous_pct": round(100 * hetero / total, 2),
+            "homozygous_pct": round(100 * homo / total, 2),
+            "diversity": He,
+            "total_snps": total,
+            "timestamp": timestamp
+        }
+
+        requests.post(
+            f"{DASHBOARD_URL}/api/metrics",
+            json=payload,
+            timeout=5
+        )
+
+
+        # diversity_payload = {
+        #     "message_type": "GENETIC_DIVERSITY",
+        #     "member_type": member_type,
+        #     "He": He,
+        #     "total_snps": total,
+        #     "timestamp": timestamp
+        # }
+
+        # requests.post(
+        #     f"{DASHBOARD_URL}/api/metrics",
+        #     json=diversity_payload,
+        #     timeout=5
+        # )
+
+
+        print(
+            f"🧬 [{member_type}] "
+            f"HET={payload['heterozygous_pct']}% | "
+            f"HOM={payload['homozygous_pct']}% "
+        )
+
+    except Exception as e:
+        print(f"❌ Error heterocigosis poblacional: {e}")
+
+
+def calculate_position_hotspots(df, member_type):
+    """Identifica hotspots (posiciones con alta frecuencia de variantes)"""
+    try:
+        # Top 10 posiciones más frecuentes
+        hotspots = df.filter(col("snp_data").isNotNull()) \
+            .select(
+                col("snp_data.chromosome").alias("chromosome"),
+                col("snp_data.position").alias("position")
+            ) \
+            .groupBy("chromosome", "position") \
+            .agg(count("*").alias("frequency")) \
+            .filter(col("frequency") >= 1) \
+            .orderBy(col("frequency").desc()) \
+            .limit(10) \
+            .collect()
+        
+        if hotspots:
+            hotspot_list = []
+            for row in hotspots:
+                row_dict = row.asDict() if hasattr(row, 'asDict') else dict(row)
+                hotspot_list.append({
+                    'chromosome': str(row_dict.get('chromosome', 'Unknown')),
+                    'position': int(row_dict.get('position', 0)),
+                    'frequency': int(row_dict.get('frequency', 0))
+                })
+            
+            hotspot_metrics = {
+                'message_type': 'POSITION_HOTSPOTS',
+                'member_type': member_type,
+                'hotspots': hotspot_list,
+                'timestamp': str(current_timestamp())
+            }
+            
+            try:
+                response = requests.post(
+                    f"{DASHBOARD_URL}/api/metrics",
+                    json=hotspot_metrics,
+                    timeout=5
+                )
+                if response.status_code == 200:
+                    print(f"🔥 [{member_type}] Hotspots identificados: {len(hotspot_list)}")
+            except Exception as e:
+                print(f"⚠️  Error enviando hotspots: {e}")
+    
+    except Exception as e:
+        print(f"❌ Error calculando hotspots: {e}")
+
+def calculate_genotype_trends(df, member_type):
+    """Calcula tendencias de genotipos en tiempo real"""
+    try:
+        genotype_distribution = df.filter(col("snp_data").isNotNull()) \
+            .select(col("snp_data.genotype").alias("genotype")) \
+            .groupBy("genotype") \
+            .agg(count("*").alias("count")) \
+            .collect()
+        
+        if genotype_distribution:
+            genotype_stats = {}
+            total = 0
+            for row in genotype_distribution:
+                row_dict = row.asDict() if hasattr(row, 'asDict') else dict(row)
+                genotype = row_dict.get('genotype', '0/0') if row_dict.get('genotype') else "0/0"
+                cnt = int(row_dict.get('count', 0))
+                genotype_stats[genotype] = cnt
+                total += cnt
+            
+            # Calcular porcentajes
+            genotype_percentages = {
+                gt: round((count / total) * 100, 2) if total > 0 else 0
+                for gt, count in genotype_stats.items()
+            }
+            
+            genotype_trends = {
+                'message_type': 'GENOTYPE_TRENDS',
+                'member_type': member_type,
+                'genotype_distribution': genotype_stats,
+                'genotype_percentages': genotype_percentages,
+                'total_genotypes': total,
+                'timestamp': str(current_timestamp())
+            }
+            
+            try:
+                response = requests.post(
+                    f"{DASHBOARD_URL}/api/metrics",
+                    json=genotype_trends,
+                    timeout=5
+                )
+                if response.status_code == 200:
+                    print(f"📈 [{member_type}] Tendencias de genotipos: {genotype_percentages}")
+            except Exception as e:
+                print(f"⚠️  Error enviando tendencias de genotipos: {e}")
+    
+    except Exception as e:
+        print(f"❌ Error calculando tendencias de genotipos: {e}")
 
 def write_to_hdfs(df, path_name):
     """Escribe el stream a HDFS en formato Parquet"""
@@ -228,13 +738,41 @@ def main():
         print("\n📊 Configurando cálculo de métricas...")
         
         def process_fathers(batch_df, batch_id):
+            # Métricas por batch
             calculate_and_send_metrics(batch_df, batch_id, "fathers")
-        
+            # Métricas de ventanas de tiempo (cada 5 batches aproximadamente)
+            if batch_id % 5 == 0:
+                calculate_time_window_metrics(batch_df, "fathers")
+                calculate_chromosome_distribution(batch_df, "fathers")
+                calculate_position_hotspots(batch_df, "fathers")
+                calculate_genotype_trends(batch_df, "fathers")
+                calculate_population_heterozygosity(batch_df, "fathers")
+                calculate_individual_heterozygosity(batch_df, "fathers")
+
+
         def process_mothers(batch_df, batch_id):
+            # Métricas por batch
             calculate_and_send_metrics(batch_df, batch_id, "mothers")
-        
+            # Métricas de ventanas de tiempo (cada 5 batches aproximadamente)
+            if batch_id % 5 == 0:
+                calculate_time_window_metrics(batch_df, "mothers")
+                calculate_chromosome_distribution(batch_df, "mothers")
+                calculate_position_hotspots(batch_df, "mothers")
+                calculate_genotype_trends(batch_df, "mothers")
+                calculate_population_heterozygosity(batch_df, "mothers")
+                calculate_individual_heterozygosity(batch_df, "mothers")
+
         def process_children(batch_df, batch_id):
+            # Métricas por batch
             calculate_and_send_metrics(batch_df, batch_id, "children")
+            # Métricas de ventanas de tiempo (cada 5 batches aproximadamente)
+            if batch_id % 5 == 0:
+                calculate_time_window_metrics(batch_df, "children")
+                calculate_chromosome_distribution(batch_df, "children")
+                calculate_position_hotspots(batch_df, "children")
+                calculate_genotype_trends(batch_df, "children")
+                calculate_population_heterozygosity(batch_df, "children")
+                calculate_individual_heterozygosity(batch_df, "children")
         
         # Checkpoints en HDFS para recuperación ante fallos
         query_fathers_metrics = fathers_df.writeStream \

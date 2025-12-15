@@ -689,16 +689,12 @@
             <div class="chart-title">Orientación Genética & Diversidad</div>
             <div class="chart-body" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px;">
                 <div style="background: #0f1419; padding: 20px; border-radius: 8px; border-left: 3px solid #10b981;">
-                    <div style="color: #94a3b8; font-size: 0.9em; margin-bottom: 8px;">Genotipos Dominantes</div>
-                    <div style="color: #10b981; font-size: 1.8em; font-weight: 700;" id="genotypeDominantPercent">0%</div>
+                    <div style="color: #94a3b8; font-size: 0.9em; margin-bottom: 8px;">Genotipos Homocigotos</div>
+                    <div style="color: #10b981; font-size: 1.8em; font-weight: 700;" id="genotypeHomoPercent">0%</div>
                 </div>
                 <div style="background: #0f1419; padding: 20px; border-radius: 8px; border-left: 3px solid #ef4444;">
-                    <div style="color: #94a3b8; font-size: 0.9em; margin-bottom: 8px;">Genotipos Recesivos</div>
-                    <div style="color: #ef4444; font-size: 1.8em; font-weight: 700;" id="genotypeRecessivePercent">0%</div>
-                </div>
-                <div style="background: #0f1419; padding: 20px; border-radius: 8px; border-left: 3px solid #3b82f6;">
                     <div style="color: #94a3b8; font-size: 0.9em; margin-bottom: 8px;">Genotipos Heterocigotos</div>
-                    <div style="color: #3b82f6; font-size: 1.8em; font-weight: 700;" id="genotypeHeterozygousPercent">0%</div>
+                    <div style="color: #ef4444; font-size: 1.8em; font-weight: 700;" id="genotypeHeteroPercent">0%</div>
                 </div>
                 <div style="background: #0f1419; padding: 20px; border-radius: 8px; border-left: 3px solid #06b6d4;">
                     <div style="color: #94a3b8; font-size: 0.9em; margin-bottom: 8px;">Diversidad Genética</div>
@@ -707,9 +703,117 @@
             </div>
         </div>
 
+        <!-- Genetic Orientation & Diversity -->
+        <!-- <div class="chart-container" style="margin-bottom: 20px;">
+            <div class="chart-title">
+                Orientación Genética & Diversidad
+                <select id="populationGroupSelector"
+                        style="margin-left:10px;background:#0f1419;color:white;
+                            border:1px solid #6b7280;border-radius:6px;padding:4px;">
+                    <option value="fathers">Fathers</option>
+                    <option value="mothers">Mothers</option>
+                    <option value="children">Children</option>
+                </select>
+            </div>
+
+            <div class="chart-body" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px;">
+                <div style="background: #0f1419; padding: 20px; border-radius: 8px; border-left: 3px solid #10b981;">
+                    <div style="color: #94a3b8; font-size: 0.9em; margin-bottom: 8px;">Genotipos Homocigotos</div>
+                    <div style="color: #10b981; font-size: 1.8em; font-weight: 700;" id="genotypeHomoPercent">0%</div>
+                </div>
+                <div style="background: #0f1419; padding: 20px; border-radius: 8px; border-left: 3px solid #ef4444;">
+                    <div style="color: #94a3b8; font-size: 0.9em; margin-bottom: 8px;">Genotipos Heterocigotos</div>
+                    <div style="color: #ef4444; font-size: 1.8em; font-weight: 700;" id="genotypeHeteroPercent">0%</div>
+                </div>
+                <div style="background: #0f1419; padding: 20px; border-radius: 8px; border-left: 3px solid #06b6d4;">
+                    <div style="color: #94a3b8; font-size: 0.9em; margin-bottom: 8px;">Diversidad Genética</div>
+                    <div style="color: #06b6d4; font-size: 1.8em; font-weight: 700;" id="geneticDiversityIndicator">0%</div>
+                </div>
+            </div>
+        </div> -->
+
+
+
+
+        <!-- NEW: Ventanas de Tiempo -->
+        <div class="charts-grid">
+            <div class="chart-container">
+                <div class="chart-title">⏱️ Registros por Ventana de Tiempo</div>
+                <div class="chart-body">
+                    <canvas id="timeWindowsChart"></canvas>
+                </div>
+            </div>
+            
+            <div class="chart-container">
+                <div class="chart-title">🔴 Posiciones Hotspot (Top 10)</div>
+                <div class="chart-body">
+                    <canvas id="hotspotsChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- NEW: Distribución de Cromosomas & Tendencias Genotipo -->
+        <div class="charts-grid">
+            <div class="chart-container">
+                <div class="chart-title">🧫 Distribución de Cromosomas</div>
+                <div class="chart-body">
+                    <canvas id="chromosomeDistributionChart"></canvas>
+                </div>
+            </div>
+            
+            <div class="chart-container">
+                <div class="chart-title">📈 Tendencias de Genotipos</div>
+                <div class="chart-body">
+                    <canvas id="genotypeTrendsChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        
+        <!-- NEW: Genética Individual -->
+        <div class="chart-container" style="margin-bottom: 20px;">
+            <div class="chart-title">
+                🧬 Perfil Genético Individual
+                <select id="individualSelector"
+                    style="background:#0f1419;color:white;border:1px solid #6b7280;border-radius:6px;padding:4px;">
+                    <option value="">Seleccionar individuo</option>
+                </select>
+            </div>
+            <div class="chart-body">
+                <canvas id="individualGeneticsChart"></canvas>
+            </div>
+        </div>
+
+        <!-- NEW: Genética Poblacional -->
+        <div class="charts-grid">
+            <div class="chart-container">
+                <div class="chart-title">
+                    🌍 Genética Poblacional (Distribución)
+                    <select id="populationGroupSelector"
+                        style="margin-left:10px;background:#0f1419;color:white;
+                            border:1px solid #6b7280;border-radius:6px;padding:4px;">
+                        <option value="fathers">Fathers</option>
+                        <option value="mothers">Mothers</option>
+                        <option value="children">Children</option>
+                    </select>
+                </div>
+
+                <div class="chart-body">
+                    <canvas id="populationGeneticsChart"></canvas>
+                </div>
+            </div>
+
+            <div class="chart-container">
+                <div class="chart-title">📊 Diversidad Genética por Grupo</div>
+                <div class="chart-body">
+                    <canvas id="populationDiversityChart"></canvas>
+                </div>
+            </div>
+        </div>
+
         <!-- Footer -->
         <footer class="footer">
-            <strong>Streaming Genético Activo:</strong> Se monitorean variantes genéticas en tiempo real desde Kafka con análisis de tendencias y detección de anomalías.
+            <strong>Streaming Genético Activo:</strong> Se monitorean variantes genéticas en tiempo real desde Kafka con análisis de ventanas de tiempo, hotspots y distribución de genotipos.
         </footer>
     </div>
 

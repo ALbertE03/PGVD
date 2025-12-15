@@ -11,6 +11,13 @@ import os
 
 app = Flask(__name__)
 
+
+# ================= GENETIC METRICS STORAGE =================
+
+genetic_individual = {}   # person_id -> data
+genetic_population = {}   # member_type -> last snapshot
+genetic_diversity = {}
+
 # Almacenamiento en memoria para métricas de procesamiento
 metrics_data = {
     'fathers': {'total_records': 0},
@@ -29,7 +36,19 @@ metrics_data = {
         'genotype_distribution': {'dominant': 0, 'recessive': 0, 'heterozygous': 0},
         'mutation_rate_window': deque(maxlen=60),  # Tasa de mutación por ventana
         'anomaly_count': 0  # Conteo de anomalías detectadas
-    }
+    },
+    # NUEVAS: Métricas de ventanas de tiempo
+    'time_windows': {
+        '1_minute': {'fathers': 0, 'mothers': 0, 'children': 0},
+        '5_minutes': {'fathers': 0, 'mothers': 0, 'children': 0},
+        '15_minutes': {'fathers': 0, 'mothers': 0, 'children': 0},
+        '1_hour': {'fathers': 0, 'mothers': 0, 'children': 0},
+    },
+    'chromosome_distribution': {},  # Por member_type
+    'position_hotspots': {},  # Por member_type
+    'genotype_trends': {},  # Por member_type
+    'recombination_rates': {},  # Por member_type
+    'genetic_orientation': {},  # Por member_type
 }
 
 
@@ -581,19 +600,96 @@ def api_task_times():
 
 @app.route('/api/metrics', methods=['POST'])
 def receive_metrics():
-    """Recibir métricas desde Spark"""
+    """Recibir métricas desde Spark - Ahora procesa múltiples tipos de mensajes"""
     try:
         data = request.get_json()
+        message_type = data.get('message_type')
         member_type = data.get('member_type')
         
         # Detectar token de finalización de familia
-        if data.get('message_type') == 'FAMILY_COMPLETE':
+        if message_type == 'FAMILY_COMPLETE':
             with metrics_lock:
                 metrics_data['families_completed'] += 1
                 metrics_data['last_update'] = datetime.now()
             print(f"✅ Familia completada: {data.get('family_id')} - Total: {metrics_data['families_completed']}")
             return jsonify({'status': 'success', 'family_completed': True})
         
+        # NUEVAS: Procesar métricas de ventanas de tiempo
+        if message_type == 'TIME_WINDOW_METRICS':
+            with metrics_lock:
+                window_name = data.get('window_name')
+                if window_name in metrics_data['time_windows']:
+                    metrics_data['time_windows'][window_name][member_type] = data.get('total_records', 0)
+            print(f"⏱️  Ventana {data.get('window_name')}: {member_type}={data.get('total_records')}")
+            return jsonify({'status': 'success'})
+        
+        # NUEVAS: Procesar distribución de cromosomas
+        if message_type == 'CHROMOSOME_DISTRIBUTION':
+            with metrics_lock:
+                metrics_data['chromosome_distribution'][member_type] = data.get('chromosome_distribution', {})
+            return jsonify({'status': 'success'})
+        
+        # NUEVAS: Procesar hotspots
+        if message_type == 'POSITION_HOTSPOTS':
+            with metrics_lock:
+                metrics_data['position_hotspots'][member_type] = data.get('hotspots', [])
+            return jsonify({'status': 'success'})
+        
+        # NUEVAS: Procesar tendencias de genotipos
+        if message_type == 'GENOTYPE_TRENDS':
+            with metrics_lock:
+                metrics_data['genotype_trends'][member_type] = {
+                    'distribution': data.get('genotype_distribution', {}),
+                    'percentages': data.get('genotype_percentages', {}),
+                    'total': data.get('total_genotypes', 0)
+                }
+            return jsonify({'status': 'success'})
+
+        if message_type == "GENETIC_INDIVIDUAL":
+            person_id = data.get("person_id")
+
+            if not person_id:
+               return jsonify({"status": "error", "message": "missing person_id"}), 400
+
+            with metrics_lock:
+                genetic_individual[person_id] = {
+                    "member_type": member_type,
+                    "heterozygous_pct": data.get("heterozygous_pct", 0),
+                    "homozygous_pct": data.get("homozygous_pct", 0),
+                    "total_snps": data.get("total_snps", 0),
+                    "timestamp": data.get("timestamp")
+                }
+
+            return jsonify({"status": "success", "stored": "GENETIC_INDIVIDUAL"})
+
+        if message_type == "GENETIC_POPULATION":
+            with metrics_lock:
+                genetic_population[member_type] = {
+                    "percentages": {
+                        "Heterozygous": data.get("heterozygous_pct", 0),
+                        "Homozygous": data.get("homozygous_pct", 0),
+                        "Diversity": data.get("diversity", 0)   
+                    },
+                    "total_snps": data.get("total_snps", 0),
+                    "timestamp": data.get("timestamp")
+                }
+
+            return jsonify({"status": "success", "stored": "GENETIC_POPULATION"})
+
+        if message_type == "GENETIC_DIVERSITY":
+            with metrics_lock:
+                genetic_diversity[member_type].append({
+                    "He": data.get("He", 0),
+                    "total_snps": data.get("total_snps", 0),
+                    "timestamp": data.get("timestamp")
+                })
+
+                # (opcional) limitar historial para no crecer infinito
+                genetic_diversity[member_type] = genetic_diversity[member_type][-100:]
+
+            return jsonify({"status": "success", "stored": "GENETIC_DIVERSITY"})
+
+        # Procesar métricas regulares (mantener compatibilidad anterior)
         with metrics_lock:
             if member_type in metrics_data:
                 # Actualizar conteo de registros
@@ -817,6 +913,28 @@ def calculate_mutation_rate(time_window, window_seconds=60):
     return recent_mutations / window_seconds if window_seconds > 0 else 0
 
 
+@app.route('/api/genetics/individual')
+def get_genetic_individual():
+    with metrics_lock:
+        print("📤 RESPUESTA /api/genetics/individual")
+        print(genetic_individual)
+        print("--------------------------------------------------")
+        return jsonify(genetic_individual)
+
+@app.route('/api/genetics/population')
+def get_genetic_population():
+    with metrics_lock:
+        print("📤 RESPUESTA /api/genetics/population")
+        print(genetic_population)
+        print("--------------------------------------------------")
+        return jsonify(genetic_population)
+
+@app.route("/api/genetics/diversity")
+def get_genetic_diversity():
+    with metrics_lock:
+        return jsonify(genetic_diversity)
+
+
 @app.route('/api/genetic_metrics')
 def api_genetic_metrics():
     """API para métricas avanzadas de streaming genético"""
@@ -921,6 +1039,69 @@ def api_genetic_alert():
     
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/time_windows')
+def api_time_windows():
+    """API para métricas de ventanas de tiempo (1min, 5min, 15min, 1hora)"""
+    with metrics_lock:
+        return jsonify({
+            'windows': metrics_data['time_windows'],
+            'timestamp': datetime.now().isoformat()
+        })
+
+
+@app.route('/api/chromosome_stats')
+def api_chromosome_stats():
+    """API para distribución de cromosomas por tipo de miembro"""
+    with metrics_lock:
+        return jsonify({
+            'chromosome_distribution': metrics_data['chromosome_distribution'],
+            'timestamp': datetime.now().isoformat()
+        })
+
+
+@app.route('/api/hotspots')
+def api_hotspots():
+    """API para posiciones con mayor frecuencia de mutaciones (hotspots)"""
+    with metrics_lock:
+        return jsonify({
+            'position_hotspots': metrics_data['position_hotspots'],
+            'timestamp': datetime.now().isoformat()
+        })
+
+
+@app.route('/api/genotype_trends')
+def api_genotype_trends():
+    """API para tendencias de distribución de genotipos"""
+    with metrics_lock:
+        return jsonify({
+            'genotype_trends': metrics_data['genotype_trends'],
+            'timestamp': datetime.now().isoformat()
+        })
+
+
+@app.route('/api/genetic_orientation')
+def api_genetic_orientation():
+    """API para orientación genética (dominante, recesivo, heterocigoto)"""
+    with metrics_lock:
+        return jsonify({
+            'genetic_orientation': metrics_data['genetic_orientation'],
+            'timestamp': datetime.now().isoformat()
+        })
+
+
+@app.route('/api/genetic_diversity')
+def api_genetic_diversity():
+    """API para diversidad genética por tipo de miembro"""
+    with metrics_lock:
+        diversity_data = {}
+        for member_type, orientation in metrics_data['genetic_orientation'].items():
+            diversity_data[member_type] = orientation.get('genetic_diversity', 0)
+        return jsonify({
+            'genetic_diversity': diversity_data,
+            'timestamp': datetime.now().isoformat()
+        })
 
 
 if __name__ == '__main__':

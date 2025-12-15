@@ -5,6 +5,10 @@ let currentChromType = 'fathers';
 let currentGenoType = 'fathers';
 let currentSnpRangeType = 'fathers';
 let currentFamilySizeType = 'fathers';
+let individualGeneticsChart;
+let populationGeneticsChart;
+let populationDiversityChart;
+
 
 // Get dark theme colors (fixed palette)
 function getThemeColors() {
@@ -1140,6 +1144,192 @@ function initializeGeneticCharts() {
             }
         }
     });
+
+    // NEW: Gráfico de Ventanas de Tiempo (Line multi-window)
+    geneticCharts.timeWindows = new Chart(document.getElementById('timeWindowsChart'), {
+        type: 'line',
+        data: {
+            labels: ['Fathers', 'Mothers', 'Children'],
+            datasets: [
+                {
+                    label: '1 Minuto',
+                    data: [0, 0, 0],
+                    borderColor: colors.cyan,
+                    backgroundColor: colors.cyan + '20',
+                    tension: 0.4,
+                    borderWidth: 2,
+                    pointRadius: 4
+                },
+                {
+                    label: '5 Minutos',
+                    data: [0, 0, 0],
+                    borderColor: colors.purple,
+                    backgroundColor: colors.purple + '20',
+                    tension: 0.4,
+                    borderWidth: 2,
+                    pointRadius: 4
+                },
+                {
+                    label: '15 Minutos',
+                    data: [0, 0, 0],
+                    borderColor: colors.amber,
+                    backgroundColor: colors.amber + '20',
+                    tension: 0.4,
+                    borderWidth: 2,
+                    pointRadius: 4
+                },
+                {
+                    label: '1 Hora',
+                    data: [0, 0, 0],
+                    borderColor: colors.pink,
+                    backgroundColor: colors.pink + '20',
+                    tension: 0.4,
+                    borderWidth: 2,
+                    pointRadius: 4
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            animation: false,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    grid: { color: colors.gridColor },
+                    ticks: { color: colors.textColor }
+                },
+                x: {
+                    grid: { display: false },
+                    ticks: { color: colors.textColor }
+                }
+            },
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: { color: colors.textColor, padding: 15 }
+                }
+            }
+        }
+    });
+
+    // NEW: Gráfico de Hotspots (Top 10 positions)
+    geneticCharts.hotspots = new Chart(document.getElementById('hotspotsChart'), {
+        type: 'bar',
+        data: {
+            labels: [],
+            datasets: [{
+                label: 'Frecuencia de Hotspots',
+                data: [],
+                backgroundColor: colors.red,
+                borderRadius: 8,
+                borderWidth: 0
+            }]
+        },
+        options: {
+            indexAxis: 'y',
+            responsive: true,
+            maintainAspectRatio: true,
+            animation: false,
+            plugins: {
+                legend: { display: false }
+            },
+            scales: {
+                x: {
+                    grid: { color: colors.gridColor },
+                    ticks: { color: colors.textColor }
+                },
+                y: {
+                    grid: { display: false },
+                    ticks: { color: colors.textColor }
+                }
+            }
+        }
+    });
+
+    // NEW: Gráfico de Distribución de Cromosomas (Stacked Bar)
+    geneticCharts.chromosomeDistribution = new Chart(document.getElementById('chromosomeDistributionChart'), {
+        type: 'bar',
+        data: {
+            labels: [],
+            datasets: []
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            animation: false,
+            indexAxis: 'y',
+            scales: {
+                x: {
+                    stacked: true,
+                    grid: { color: colors.gridColor },
+                    ticks: { color: colors.textColor }
+                },
+                y: {
+                    stacked: true,
+                    grid: { display: false },
+                    ticks: { color: colors.textColor }
+                }
+            },
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: { color: colors.textColor, padding: 15 }
+                }
+            }
+        }
+    });
+
+    // NEW: Gráfico de Tendencias de Genotipos (Grouped Bar)
+    geneticCharts.genotypeTrends = new Chart(document.getElementById('genotypeTrendsChart'), {
+        type: 'bar',
+        data: {
+            labels: ['Fathers', 'Mothers', 'Children'],
+            datasets: [
+                {
+                    label: 'Dominante (%)',
+                    data: [0, 0, 0],
+                    backgroundColor: colors.green,
+                    borderRadius: 4
+                },
+                {
+                    label: 'Recesivo (%)',
+                    data: [0, 0, 0],
+                    backgroundColor: colors.red,
+                    borderRadius: 4
+                },
+                {
+                    label: 'Heterocigoto (%)',
+                    data: [0, 0, 0],
+                    backgroundColor: colors.blue,
+                    borderRadius: 4
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            animation: false,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    max: 100,
+                    grid: { color: colors.gridColor },
+                    ticks: { color: colors.textColor, callback: function(v) { return v + '%'; } }
+                },
+                x: {
+                    grid: { display: false },
+                    ticks: { color: colors.textColor }
+                }
+            },
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: { color: colors.textColor, padding: 15 }
+                }
+            }
+        }
+    });
 }
 
 function updateGeneticMetrics() {
@@ -1239,17 +1429,430 @@ function updateGeneticIndicators(metrics) {
             });
         })
         .catch(err => console.error('Error fetching genetic trends:', err));
+    
+    // NEW: Actualizar gráficos de ventanas de tiempo y hotspots
+    updateTimeWindowMetrics();
+    updateHotspotsMetrics();
+    updateChromosomeDistributionMetrics();
+    updateGenotypeTrendsMetrics();
 }
+
+// NEW: Actualizar métricas de ventanas de tiempo
+function updateTimeWindowMetrics() {
+    try {
+        fetch('/api/time_windows')
+            .then(res => res.json())
+            .then(data => {
+                if (geneticCharts.timeWindows && data.windows) {
+                    const windows = data.windows;
+                    geneticCharts.timeWindows.data.datasets[0].data = [
+                        windows['1_minute']['fathers'] || 0,
+                        windows['1_minute']['mothers'] || 0,
+                        windows['1_minute']['children'] || 0
+                    ];
+                    geneticCharts.timeWindows.data.datasets[1].data = [
+                        windows['5_minutes']['fathers'] || 0,
+                        windows['5_minutes']['mothers'] || 0,
+                        windows['5_minutes']['children'] || 0
+                    ];
+                    geneticCharts.timeWindows.data.datasets[2].data = [
+                        windows['15_minutes']['fathers'] || 0,
+                        windows['15_minutes']['mothers'] || 0,
+                        windows['15_minutes']['children'] || 0
+                    ];
+                    geneticCharts.timeWindows.data.datasets[3].data = [
+                        windows['1_hour']['fathers'] || 0,
+                        windows['1_hour']['mothers'] || 0,
+                        windows['1_hour']['children'] || 0
+                    ];
+                    geneticCharts.timeWindows.update('none');
+                }
+            })
+            .catch(err => console.error('Error fetching time windows:', err));
+    } catch (error) {
+        console.error('Error updating time windows:', error);
+    }
+}
+
+// NEW: Actualizar métricas de hotspots
+function updateHotspotsMetrics() {
+    try {
+        fetch('/api/hotspots')
+            .then(res => res.json())
+            .then(data => {
+                if (geneticCharts.hotspots && data.position_hotspots) {
+                    const allHotspots = [];
+                    Object.values(data.position_hotspots).forEach(memberHotspots => {
+                        allHotspots.push(...memberHotspots);
+                    });
+                    
+                    // Agrupar y ordenar top 10
+                    const topHotspots = allHotspots.slice(0, 10);
+                    geneticCharts.hotspots.data.labels = topHotspots.map(h => `Chr${h.chromosome}:${h.position}`);
+                    geneticCharts.hotspots.data.datasets[0].data = topHotspots.map(h => h.frequency);
+                    geneticCharts.hotspots.update('none');
+                }
+            })
+            .catch(err => console.error('Error fetching hotspots:', err));
+    } catch (error) {
+        console.error('Error updating hotspots:', error);
+    }
+}
+
+// NEW: Actualizar distribución de cromosomas
+function updateChromosomeDistributionMetrics() {
+    try {
+        fetch('/api/chromosome_stats')
+            .then(res => res.json())
+            .then(data => {
+                if (geneticCharts.chromosomeDistribution && data.chromosome_distribution) {
+                    const chrDist = data.chromosome_distribution;
+                    const colors = getThemeColors();
+                    const colorArray = [colors.cyan, colors.purple, colors.amber, colors.pink, colors.green, colors.red, colors.blue];
+                    
+                    // Recolectar todos los cromosomas únicos
+                    const allChromosomes = new Set();
+                    Object.values(chrDist).forEach(memberChrs => {
+                        Object.keys(memberChrs).forEach(chr => allChromosomes.add(chr));
+                    });
+                    
+                    const chromosomes = Array.from(allChromosomes).sort();
+                    const memberTypes = ['fathers', 'mothers', 'children'];
+                    
+                    // Construir datasets para cada tipo de miembro
+                    const datasets = memberTypes.map((member, idx) => ({
+                        label: member.charAt(0).toUpperCase() + member.slice(1),
+                        data: chromosomes.map(chr => {
+                            const count = Object.values(chrDist[member] || {}).reduce((sum, genotypes) => {
+                                return sum + (genotypes[chr] || 0);
+                            }, 0);
+                            return count;
+                        }),
+                        backgroundColor: colorArray[idx % colorArray.length]
+                    }));
+                    
+                    geneticCharts.chromosomeDistribution.data.labels = chromosomes;
+                    geneticCharts.chromosomeDistribution.data.datasets = datasets;
+                    geneticCharts.chromosomeDistribution.update('none');
+                }
+            })
+            .catch(err => console.error('Error fetching chromosome distribution:', err));
+    } catch (error) {
+        console.error('Error updating chromosome distribution:', error);
+    }
+}
+
+// NEW: Actualizar tendencias de genotipos
+function updateGenotypeTrendsMetrics() {
+    try {
+        fetch('/api/genotype_trends')
+            .then(res => res.json())
+            .then(data => {
+                if (geneticCharts.genotypeTrends && data.genotype_trends) {
+                    const trends = data.genotype_trends;
+                    const memberTypes = ['fathers', 'mothers', 'children'];
+                    
+                    const dominantData = memberTypes.map(m => {
+                        const percentages = trends[m]?.percentages || {};
+                        return percentages.dominant || 0;
+                    });
+                    
+                    const recessiveData = memberTypes.map(m => {
+                        const percentages = trends[m]?.percentages || {};
+                        return percentages.recessive || 0;
+                    });
+                    
+                    const heteroData = memberTypes.map(m => {
+                        const percentages = trends[m]?.percentages || {};
+                        return percentages.heterozygous || 0;
+                    });
+                    
+                    geneticCharts.genotypeTrends.data.datasets[0].data = dominantData;
+                    geneticCharts.genotypeTrends.data.datasets[1].data = recessiveData;
+                    geneticCharts.genotypeTrends.data.datasets[2].data = heteroData;
+                    geneticCharts.genotypeTrends.update('none');
+                }
+            })
+            .catch(err => console.error('Error fetching genotype trends:', err));
+    } catch (error) {
+        console.error('Error updating genotype trends:', error);
+    }
+}
+
+// NEW: Actualizar orientación genética
+function updateGeneticOrientationMetrics() {
+    try {
+        fetch('/api/genetic_orientation')
+            .then(res => res.json())
+            .then(data => {
+                if (data.genetic_orientation) {
+                    const orientation = data.genetic_orientation;
+                    
+                    // Actualizar indicadores de orientación genética
+                    const memberTypes = ['fathers', 'mothers', 'children'];
+                    memberTypes.forEach(member => {
+                        const memberData = orientation[member] || {};
+                        const domEl = document.getElementById(`${member}DominantPercent`);
+                        const recEl = document.getElementById(`${member}RecessivePercent`);
+                        const hetEl = document.getElementById(`${member}HeterozygousPercent`);
+                        const divEl = document.getElementById(`${member}DiversityIndicator`);
+                        
+                        if (domEl) domEl.textContent = (memberData.dominant_pct || 0).toFixed(2) + '%';
+                        if (recEl) recEl.textContent = (memberData.recessive_pct || 0).toFixed(2) + '%';
+                        if (hetEl) hetEl.textContent = (memberData.heterozygous_pct || 0).toFixed(2) + '%';
+                        if (divEl) divEl.textContent = (memberData.genetic_diversity || 0).toFixed(3);
+                    });
+                }
+            })
+            .catch(err => console.error('Error fetching genetic orientation:', err));
+    } catch (error) {
+        console.error('Error updating genetic orientation:', error);
+    }
+}
+
+
+function initializeGeneticsCharts() {
+
+    // 🧬 INDIVIDUAL: Homo vs Hetero
+    const ctxIndividual = document
+        .getElementById('individualGeneticsChart')
+        .getContext('2d');
+
+    individualGeneticsChart = new Chart(ctxIndividual, {
+        type: 'doughnut',
+        data: {
+            labels: ['Homozygous', 'Heterozygous'],
+            datasets: [{
+                data: [0, 0]
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: { position: 'bottom' }
+            }
+        }
+    });
+
+    // 🌍 POBLACIÓN: Homo vs Hetero
+    const ctxPopulation = document
+        .getElementById('populationGeneticsChart')
+        .getContext('2d');
+
+    populationGeneticsChart = new Chart(ctxPopulation, {
+        type: 'bar',
+        data: {
+            labels: ['Homozygous', 'Heterozygous'],
+            datasets: [{
+                label: 'Population (%)',
+                data: [0, 0]
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: { beginAtZero: true , max :100}
+            }
+        }
+    });
+
+    // 📊 DIVERSIDAD GENÉTICA
+    const ctxDiversity = document
+        .getElementById('populationDiversityChart')
+        .getContext('2d');
+
+    populationDiversityChart = new Chart(ctxDiversity, {
+        type: 'line',
+        data: {
+            labels: [],
+            datasets: [{
+                label: 'Genetic Diversity (He)',
+                data: []
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: {
+                    min: 0,
+                    max: 1
+                }
+            }
+        }
+    });
+}
+
+function populateIndividualSelector(data) {
+    const selector = document.getElementById('individualSelector');
+
+    if (selector.options.length > 1) return;
+
+    Object.keys(data).forEach(personId => {
+        const opt = document.createElement('option');
+        opt.value = personId;
+        opt.textContent = personId;
+        selector.appendChild(opt);
+    });
+}
+
+
+async function updateIndividualGeneticsChart() {
+    try {
+        const res = await fetch('/api/genetics/individual');
+        const data = await res.json();
+
+        console.log(
+            'Datos recibidos de /api/genetics/individual:',
+            data
+        );
+        
+        populateIndividualSelector(data);
+
+        const personId =
+            document.getElementById('individualSelector').value;
+
+        if (!personId || !data[personId]) return;
+
+        const individual = data[personId];
+
+        individualGeneticsChart.data.datasets[0].data = [
+            individual.homozygous_pct || 0,
+            individual.heterozygous_pct || 0
+        ];
+
+        individualGeneticsChart.update();
+    } catch (err) {
+        console.error(
+            'Error fetching individual genetics:',
+            err
+        );
+    }
+}
+
+
+async function updatePopulationGeneticsChart() {
+    try {
+        const res = await fetch('/api/genetics/population');
+        const data = await res.json();
+
+        console.log(
+            'Datos recibidos de /api/genetics/population:',
+            data
+        );
+
+        const group = document.getElementById('populationGroupSelector').value;
+
+        if (!data[group] || !data[group].percentages) return;
+
+        const pct = data[group].percentages;
+
+        populationGeneticsChart.data.datasets[0].data = [
+            pct.Homozygous || 0,
+            pct.Heterozygous || 0
+        ];
+
+        populationGeneticsChart.update();
+    } catch (err) {
+        console.error(
+            'Error fetching population genetics:',
+            err
+        );
+    }
+}
+
+// async function updateGeneticIndicators() {
+//     try {
+//         const res = await fetch('/api/genetics/population');
+//         const data = await res.json();
+
+//         const group = document.getElementById('populationGroupSelector').value;
+
+//         if (!data[group] || !data[group].percentages) return;
+
+//         const pct = data[group].percentages;
+
+//         // Actualiza los indicadores
+//         document.getElementById('genotypeHomoPercent').textContent = (pct.Homozygous || 0) + '%';
+//         document.getElementById('genotypeHeteroPercent').textContent = (pct.Heterozygous || 0) + '%';
+//         document.getElementById('geneticDiversityIndicator').textContent = ((pct.Diversity || 0) * 100).toFixed(1) + '%';
+
+//     } catch (err) {
+//         console.error('Error updating genetic indicators:', err);
+//     }
+// }
+
+async function updatePopulationDiversityChart() {
+    try {
+        const res = await fetch('/api/genetics/diversity');
+        const data = await res.json();
+
+        console.log('📊 Datos diversidad genética:', data);
+
+        const group =
+            document.getElementById('populationGroupSelector')?.value || 'fathers';
+
+        if (!data[group] || data[group].length === 0) return;
+
+        populationDiversityChart.data.labels = data[group].map(
+            d => new Date(d.timestamp).toLocaleTimeString()
+        );
+
+        populationDiversityChart.data.datasets[0].data = data[group].map(
+            d => d.He
+        );
+
+        populationDiversityChart.update();
+    } catch (err) {
+        console.error('Error updating diversity chart:', err);
+    }
+}
+
+
 
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', () => {
     initializeCharts();
     initializeGeneticCharts();
+    initializeGeneticsCharts();
+
+    document.getElementById('individualSelector')
+        .addEventListener('change', updateIndividualGeneticsChart);
+
+    document.getElementById('populationGroupSelector')
+        .addEventListener('change', () => {
+            populationDiversityChart.data.labels = [];
+            populationDiversityChart.data.datasets[0].data = [];
+            populationDiversityChart.update();
+
+            updatePopulationGeneticsChart();
+            updatePopulationDiversityChart();
+            //updateGeneticIndicators();
+    });
+
+    console.log(individualGeneticsChart, populationGeneticsChart, populationDiversityChart);
+
     updateDashboard();
     updateGeneticMetrics();
+    updateGeneticOrientationMetrics();
+    
+    // Primera carga
+    //updateGeneticIndicators();
+    updateIndividualGeneticsChart();
+    updatePopulationGeneticsChart();
+    updatePopulationDiversityChart();
+
     loadFamilies('fathers');
 
     // Auto-refresh every 3 seconds
     setInterval(updateDashboard, 3000);
     setInterval(updateGeneticMetrics, 2000);
+    setInterval(updateGeneticOrientationMetrics, 2000);
+    
+    
+    // Refrescar cada 5 segundos
+    //setInterval(updateGeneticIndicators, 5000);
+    setInterval(updateIndividualGeneticsChart, 5000);
+    setInterval(updatePopulationGeneticsChart, 5000);
+    setInterval(updatePopulationDiversityChart, 5000);
+    
 });
