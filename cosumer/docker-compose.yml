@@ -247,7 +247,7 @@ services:
     working_dir: /app
     command: >
       bash -c "pip install --quiet -r requirements_dashboard.txt &&
-      python dashboard/dashboard_advanced.py"
+      python dashboard/dashboard_genomic_advanced.py"
     volumes:
       - ./dashboard:/app/dashboard:ro
       - ./requirements_dashboard.txt:/app/requirements_dashboard.txt:ro

@@ -1,0 +1,988 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🧬 Genomic Data Dashboard - Advanced Analytics</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        header {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 30px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+
+        h1 {
+            color: #667eea;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+        }
+
+        .subtitle {
+            color: #764ba2;
+            font-size: 1.1em;
+            font-weight: 300;
+        }
+
+        .status-bar {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .status-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .status-card .label {
+            font-size: 0.9em;
+            opacity: 0.9;
+            margin-bottom: 5px;
+        }
+
+        .status-card .value {
+            font-size: 1.8em;
+            font-weight: bold;
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
+            gap: 25px;
+            margin-bottom: 30px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+        }
+
+        .card-title {
+            color: #667eea;
+            font-size: 1.3em;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 15px;
+        }
+
+        .card-title::before {
+            content: '';
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #667eea;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 350px;
+            margin-bottom: 15px;
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .metric-box {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .metric-label {
+            color: #764ba2;
+            font-size: 0.85em;
+            margin-bottom: 5px;
+            font-weight: 600;
+        }
+
+        .metric-value {
+            color: #667eea;
+            font-size: 1.5em;
+            font-weight: bold;
+        }
+
+        .linkage-badge {
+            display: inline-block;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+
+        .linkage-low {
+            background: #ffebee;
+            color: #c62828;
+        }
+
+        .linkage-moderate {
+            background: #fff3e0;
+            color: #e65100;
+        }
+
+        .linkage-high {
+            background: #e8f5e9;
+            color: #2e7d32;
+        }
+
+        .linkage-very_high {
+            background: #e3f2fd;
+            color: #1565c0;
+        }
+
+        .refresh-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 8px;
+            font-size: 1em;
+            cursor: pointer;
+            transition: transform 0.2s ease;
+        }
+
+        .refresh-btn:hover {
+            transform: scale(1.05);
+        }
+
+        .footer {
+            text-align: center;
+            color: white;
+            margin-top: 40px;
+            padding: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            h1 {
+                font-size: 1.8em;
+            }
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(102, 126, 234, 0.3);
+            border-radius: 50%;
+            border-top-color: #667eea;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .legend {
+            font-size: 0.85em;
+            color: #666;
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid #eee;
+        }
+
+        .stats-overview {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 25px 0;
+        }
+
+        .stat-card {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+        }
+
+        .stat-label {
+            font-size: 0.85em;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .stat-value {
+            font-size: 2.2em;
+            font-weight: bold;
+        }
+
+        .fathers-card { border-top: 4px solid #3498db; }
+        .mothers-card { border-top: 4px solid #e74c3c; }
+        .children-card { border-top: 4px solid #2ecc71; }
+        .total-card { border-top: 4px solid #f39c12; }
+
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🧬 GENOMIC DATA DASHBOARD</h1>
+            <p class="subtitle">Real-Time Processing of Family Genomic Data</p>
+            
+            <div class="status-bar">
+                <div class="status-card">
+                    <div class="label">Total Registros</div>
+                    <div class="value" id="total-records">0</div>
+                </div>
+                <div class="status-card">
+                    <div class="label">Familias Procesadas</div>
+                    <div class="value" id="total-families">0</div>
+                </div>
+                <div class="status-card">
+                    <div class="label">Throughput (rec/s)</div>
+                    <div class="value" id="throughput">0</div>
+                </div>
+                <div class="status-card">
+                    <div class="label">Tiempo de Actividad</div>
+                    <div class="value" id="uptime">0h</div>
+                </div>
+            </div>
+        </header>
+
+        <!-- ===== Global Counters ===== -->
+        <div class="stats-overview">
+            <div class="stat-card fathers-card">
+                <div class="stat-label">👨 Fathers</div>
+                <div class="stat-value" id="fathers-count">-</div>
+            </div>
+            <div class="stat-card mothers-card">
+                <div class="stat-label">👩 Mothers</div>
+                <div class="stat-value" id="mothers-count">-</div>
+            </div>
+            <div class="stat-card children-card">
+                <div class="stat-label">👶 Children</div>
+                <div class="stat-value" id="children-count">-</div>
+            </div>
+            <div class="stat-card total-card">
+                <div class="stat-label">📊 Total Records</div>
+                <div class="stat-value" id="total-count">-</div>
+            </div>
+        </div>
+            
+
+        <div class="dashboard-grid">
+            <!-- MLL Analysis -->
+            <div class="card">
+                <div class="card-title">📊 Análisis MLL - Vinculación Genética</div>
+                <div class="chart-container">
+                    <canvas id="mll-chart"></canvas>
+                </div>
+                <div class="metrics-grid">
+                    <div class="metric-box">
+                        <div class="metric-label">Score Padres</div>
+                        <div class="metric-value" id="mll-father">--</div>
+                    </div>
+                    <div class="metric-box">
+                        <div class="metric-label">Score Madres</div>
+                        <div class="metric-value" id="mll-mother">--</div>
+                    </div>
+                    <div class="metric-box">
+                        <div class="metric-label">Score Hijos</div>
+                        <div class="metric-value" id="mll-children">--</div>
+                    </div>
+                    <div class="metric-box">
+                        <div class="metric-label">Bloques Haplotípicos</div>
+                        <div class="metric-value" id="haplotype-blocks">--</div>
+                    </div>
+                </div>
+                <div class="legend">MLL (Multi-Locus Linkage): Mide la fuerza de vinculación genética entre múltiples loci</div>
+            </div>
+
+            <!-- Genetic Similarity -->
+            <div class="card">
+                <div class="card-title">👨‍👩‍👧 Similitud Familiar</div>
+                <div class="chart-container">
+                    <div id="similarity-chart"></div>
+                </div>
+                <div class="metrics-grid">
+                    <div class="metric-box">
+                        <div class="metric-label">Similitud Padre-Hijo</div>
+                        <div class="metric-value" id="sim-father-child">--</div>
+                    </div>
+                    <div class="metric-box">
+                        <div class="metric-label">SNPs Heredados</div>
+                        <div class="metric-value" id="inherited-snps">--</div>
+                    </div>
+                </div>
+                <div class="legend">Concordancia genética basada en similitud de genotipos entre generaciones</div>
+            </div>
+
+            <!-- Recombination Rate -->
+            <div class="card">
+                <div class="card-title">🔄 Tasa de Recombinación Cromosómica</div>
+                <div class="chart-container">
+                    <canvas id="recombination-chart"></canvas>
+                </div>
+                <div class="metrics-grid">
+                    <div class="metric-box">
+                        <div class="metric-label">Eventos Recomb.</div>
+                        <div class="metric-value" id="recomb-events">--</div>
+                    </div>
+                    <div class="metric-box">
+                        <div class="metric-label">Tasa (%)</div>
+                        <div class="metric-value" id="recomb-rate">--</div>
+                    </div>
+                </div>
+                <div class="legend">Estimación de cambios de alelos entre SNPs en el mismo cromosoma</div>
+            </div>
+
+            <!-- Genetic Diversity -->
+            <div class="card">
+                <div class="card-title">🎨 Diversidad Genética (Shannon Entropy)</div>
+                <div class="chart-container">
+                    <canvas id="diversity-chart"></canvas>
+                </div>
+                <div class="metrics-grid">
+                    <div class="metric-box">
+                        <div class="metric-label">Índice Diversidad</div>
+                        <div class="metric-value" id="diversity-index">--</div>
+                    </div>
+                    <div class="metric-box">
+                        <div class="metric-label">Genotipos Únicos</div>
+                        <div class="metric-value" id="unique-genotypes">--</div>
+                    </div>
+                </div>
+                <div class="legend">Medida de variedad genética basada en entropía de Shannon</div>
+            </div>
+
+            <!-- Chromosome Distribution -->
+            <div class="card">
+                <div class="card-title">🧪 Distribución por Cromosoma</div>
+                <div id="chromosome-chart" style="height: 350px;"></div>
+                <div class="legend">Distribución de SNPs procesados en cada cromosoma</div>
+            </div>
+
+            <!-- Processing Throughput -->
+            <div class="card">
+                <div class="card-title">⚡ Throughput de Procesamiento</div>
+                <div class="chart-container">
+                    <canvas id="throughput-chart"></canvas>
+                </div>
+                <div class="metrics-grid">
+                    <div class="metric-box">
+                        <div class="metric-label">Últimas 5 min</div>
+                        <div class="metric-value" id="last-5-min">--</div>
+                    </div>
+                    <div class="metric-box">
+                        <div class="metric-label">Velocidad Actual</div>
+                        <div class="metric-value" id="current-speed">--</div>
+                    </div>
+                </div>
+                <div class="legend">Registros procesados por segundo en los últimos intervalos</div>
+            </div>
+
+            <!-- Processing Rate - Last 50 Batches -->
+            <div class="card">
+                <div class="card-title">📊 Processing Rate - Últimos 50 Batches</div>
+                <div class="chart-container">
+                    <canvas id="processing-rate-chart"></canvas>
+                </div>
+                <div class="metrics-grid">
+                    <div class="metric-box">
+                        <div class="metric-label">Batches Procesados</div>
+                        <div class="metric-value" id="batches-count">--</div>
+                    </div>
+                    <div class="metric-box">
+                        <div class="metric-label">Último Update</div>
+                        <div class="metric-value" id="last-batch-update" style="font-size:1em;">--</div>
+                    </div>
+                </div>
+                <div class="legend">Velocidad de procesamiento por tipo de miembro en los últimos 50 batches</div>
+            </div>
+
+            <!-- SNP Distribution -->
+            <div class="card">
+                <div class="card-title">🧬 Distribución de SNPs por Cromosoma</div>
+                <div class="chart-container">
+                    <canvas id="snp-dist-chart"></canvas>
+                </div>
+                <div class="legend">Cantidad de SNPs identificados en cada cromosoma del genoma</div>
+            </div>
+
+            <!-- Mendelian Consistency Analysis -->
+            <div class="card">
+                <div class="card-title">👨‍👩‍👧 Análisis de Consistencia Mendeliana</div>
+                <div class="chart-container">
+                    <canvas id="mendelian-chart"></canvas>
+                </div>
+                <div class="metrics-grid">
+                    <div class="metric-box">
+                        <div class="metric-label">Consistencia Promedio</div>
+                        <div class="metric-value" id="avg-consistency">--</div>
+                    </div>
+                    <div class="metric-box">
+                        <div class="metric-label">Familias Perfectas</div>
+                        <div class="metric-value" id="perfect-families">--</div>
+                    </div>
+                    <div class="metric-box">
+                        <div class="metric-label">Con Violaciones</div>
+                        <div class="metric-value" id="violated-families">--</div>
+                    </div>
+                    <div class="metric-box">
+                        <div class="metric-label">Total Analizado</div>
+                        <div class="metric-value" id="total-families-analyzed">--</div>
+                    </div>
+                </div>
+                <div class="legend">Verifica la consistencia de herencia mendeliana en tríos padre-madre-hijo. Detecta violaciones de las leyes de Mendel en la transmisión de alelos.</div>
+            </div>
+        </div>
+
+        <div style="text-align: center; margin-bottom: 30px;">
+            <button class="refresh-btn" onclick="refreshAllData()">🔄 Actualizar Datos</button>
+            <div style="color: white; margin-top: 10px; font-size: 0.9em;">Último update: <span id="last-update">--</span></div>
+        </div>
+
+        <footer class="footer">
+            <p>🧬 Dashboard de Análisis Genómico Avanzado | Datos en Tiempo Real desde Spark Streaming</p>
+        </footer>
+    </div>
+
+    <script>
+        const API_BASE = '/api';
+        let charts = {};
+        let throughputHistory = [];
+
+        // ==================== Actualización de Datos ====================
+
+        async function refreshAllData() {
+            try {
+                const [mllData, similarityData, recombData, diversityData, chromosomeData, throughputData, statusData, snpData, mendelianData, processingData, statsData] = 
+                    await Promise.all([
+                        axios.get(`${API_BASE}/genomic/mll`),
+                        axios.get(`${API_BASE}/genomic/family-similarity`),
+                        axios.get(`${API_BASE}/genomic/recombination`),
+                        axios.get(`${API_BASE}/genomic/diversity`),
+                        axios.get(`${API_BASE}/genomic/chromosome-distribution`),
+                        axios.get(`${API_BASE}/processing/throughput`),
+                        axios.get(`${API_BASE}/status`),
+                        axios.get(`${API_BASE}/snp_distribution`).catch(e => ({data: {}})),
+                        axios.get(`${API_BASE}/mendelian_consistency`).catch(e => ({data: {families: [], summary: {total_families_analyzed: 0, average_consistency: 0, families_with_violations: 0, families_perfect: 0}}})),
+                        axios.get(`${API_BASE}/processing_history`).catch(e => ({data: {history: []}})),
+                        axios.get(`${API_BASE}/stats`).catch(e => ({data: {fathers: 0, mothers: 0, children: 0, total: 0}}))
+                    ]);
+
+                updateStatusBar(statusData.data, throughputData.data, statsData.data);
+                updateMLLChart(mllData.data);
+                updateSimilarityChart(similarityData.data);
+                updateRecombinationChart(recombData.data);
+                updateDiversityChart(diversityData.data);
+                updateChromosomeChart(chromosomeData.data);
+                updateThroughputChart(throughputData.data);
+                updateProcessingRateChart(processingData.data);
+                updateSNPDistributionChart(snpData.data);
+                updateMendelianConsistency(mendelianData.data);
+                updateTimestamp();
+
+            } catch (error) {
+                console.error('Error al actualizar datos:', error);
+            }
+        }
+
+        // ==================== Actualización de Status Bar ====================
+
+        function updateStatusBar(status, throughput, stats) {
+            document.getElementById('total-records').textContent = 
+                (status.total_records || 0).toLocaleString();
+            document.getElementById('total-families').textContent = 
+                (status.unique_families || 0).toLocaleString();
+            document.getElementById('throughput').textContent = 
+                (throughput.throughput_per_second || 0).toFixed(1);
+            
+            const uptime = status.uptime || 0;
+            const hours = Math.floor(uptime / 3600);
+            const mins = Math.floor((uptime % 3600) / 60);
+            document.getElementById('uptime').textContent = `${hours}h ${mins}m`;
+            
+            // Actualizar contadores de padres, madres, hijos
+            if (stats) {
+                document.getElementById('fathers-count').textContent = (stats.fathers || 0).toLocaleString();
+                document.getElementById('mothers-count').textContent = (stats.mothers || 0).toLocaleString();
+                document.getElementById('children-count').textContent = (stats.children || 0).toLocaleString();
+                document.getElementById('total-count').textContent = (stats.total || 0).toLocaleString();
+            }
+        }
+
+        // ==================== Gráficas ====================
+
+        function updateMLLChart(data) {
+            const ctx = document.getElementById('mll-chart').getContext('2d');
+            
+            const values = [
+                data.fathers?.score || 0,
+                data.mothers?.score || 0,
+                data.children?.score || 0
+            ];
+
+            document.getElementById('mll-father').textContent = (data.fathers?.score || 0).toFixed(1);
+            document.getElementById('mll-mother').textContent = (data.mothers?.score || 0).toFixed(1);
+            document.getElementById('mll-children').textContent = (data.children?.score || 0).toFixed(1);
+            document.getElementById('haplotype-blocks').textContent = 
+                (data.fathers?.haplotype_blocks || 0) + (data.mothers?.haplotype_blocks || 0);
+
+            if (charts.mll) {
+                charts.mll.data.datasets[0].data = values;
+                charts.mll.update();
+            } else {
+                charts.mll = new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['Padres 👨', 'Madres 👩', 'Hijos 👶'],
+                        datasets: [{
+                            data: values,
+                            backgroundColor: ['#667eea', '#764ba2', '#f093fb'],
+                            borderColor: ['#fff', '#fff', '#fff'],
+                            borderWidth: 3
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'bottom',
+                                labels: { padding: 15, font: { size: 12 } }
+                            }
+                        }
+                    }
+                });
+            }
+        }
+
+        function updateSimilarityChart(data) {
+            const similarities = data.similarities || [];
+            const similarity_val = similarities.length > 0 ? similarities[0].similarity : 0;
+
+            document.getElementById('sim-father-child').textContent = similarity_val.toFixed(1) + '%';
+            document.getElementById('inherited-snps').textContent = 
+                (similarities[0]?.inherited_snps || 0);
+
+            const trace = {
+                x: similarities.slice(0, 3).map((_, i) => `Familia ${i+1}`),
+                y: similarities.slice(0, 3).map(s => s.similarity),
+                type: 'bar',
+                marker: {
+                    color: ['#667eea', '#764ba2', '#f093fb']
+                }
+            };
+
+            const layout = {
+                title: 'Similitud Genética Padre-Hijo (%)',
+                xaxis: { title: 'Relación Familiar' },
+                yaxis: { title: 'Similitud (%)' },
+                margin: { l: 50, r: 50, t: 50, b: 50 }
+            };
+
+            Plotly.newPlot('similarity-chart', [trace], layout, { responsive: true });
+        }
+
+        function updateRecombinationChart(data) {
+            const ctx = document.getElementById('recombination-chart').getContext('2d');
+            
+            const values = [
+                data.fathers?.recombination_events || 0,
+                data.mothers?.recombination_events || 0,
+                data.children?.recombination_events || 0
+            ];
+
+            document.getElementById('recomb-events').textContent = 
+                Math.max(...values);
+            document.getElementById('recomb-rate').textContent = 
+                (data.fathers?.rate || 0).toFixed(2);
+
+            if (charts.recombination) {
+                charts.recombination.data.datasets[0].data = values;
+                charts.recombination.update();
+            } else {
+                charts.recombination = new Chart(ctx, {
+                    type: 'radar',
+                    data: {
+                        labels: ['Padres', 'Madres', 'Hijos'],
+                        datasets: [{
+                            label: 'Eventos de Recombinación',
+                            data: values,
+                            borderColor: '#667eea',
+                            backgroundColor: 'rgba(102, 126, 234, 0.2)',
+                            borderWidth: 2,
+                            pointBackgroundColor: '#667eea',
+                            pointBorderColor: '#fff',
+                            pointBorderWidth: 2
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { position: 'bottom' }
+                        },
+                        scales: {
+                            r: { beginAtZero: true }
+                        }
+                    }
+                });
+            }
+        }
+
+        function updateDiversityChart(data) {
+            const ctx = document.getElementById('diversity-chart').getContext('2d');
+            
+            const values = [
+                data.fathers?.diversity_index || 0,
+                data.mothers?.diversity_index || 0,
+                data.children?.diversity_index || 0
+            ];
+
+            document.getElementById('diversity-index').textContent = 
+                Math.max(...values).toFixed(1);
+            document.getElementById('unique-genotypes').textContent = 
+                (data.fathers?.unique_genotypes || 0) + 
+                (data.mothers?.unique_genotypes || 0) +
+                (data.children?.unique_genotypes || 0);
+
+            if (charts.diversity) {
+                charts.diversity.data.datasets[0].data = values;
+                charts.diversity.update();
+            } else {
+                charts.diversity = new Chart(ctx, {
+                    type: 'polarArea',
+                    data: {
+                        labels: ['Padres 👨', 'Madres 👩', 'Hijos 👶'],
+                        datasets: [{
+                            data: values,
+                            backgroundColor: [
+                                'rgba(102, 126, 234, 0.6)',
+                                'rgba(118, 75, 162, 0.6)',
+                                'rgba(240, 147, 251, 0.6)'
+                            ],
+                            borderColor: ['#667eea', '#764ba2', '#f093fb'],
+                            borderWidth: 2
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { position: 'bottom' }
+                        }
+                    }
+                });
+            }
+        }
+
+        function updateChromosomeChart(data) {
+            const all_chroms = new Set();
+            Object.values(data).forEach(d => {
+                Object.keys(d).forEach(c => all_chroms.add(c));
+            });
+
+            const chromosomes = Array.from(all_chroms).sort();
+            
+            const trace1 = {
+                x: chromosomes,
+                y: chromosomes.map(c => data.fathers?.[c] || 0),
+                type: 'bar',
+                name: 'Padres',
+                marker: { color: '#667eea' }
+            };
+
+            const trace2 = {
+                x: chromosomes,
+                y: chromosomes.map(c => data.mothers?.[c] || 0),
+                type: 'bar',
+                name: 'Madres',
+                marker: { color: '#764ba2' }
+            };
+
+            const trace3 = {
+                x: chromosomes,
+                y: chromosomes.map(c => data.children?.[c] || 0),
+                type: 'bar',
+                name: 'Hijos',
+                marker: { color: '#f093fb' }
+            };
+
+            const layout = {
+                title: 'Distribución de SNPs por Cromosoma',
+                xaxis: { title: 'Cromosoma' },
+                yaxis: { title: 'Cantidad de SNPs' },
+                barmode: 'group',
+                margin: { b: 100 }
+            };
+
+            Plotly.newPlot('chromosome-chart', [trace1, trace2, trace3], layout, { responsive: true });
+        }
+
+        function updateThroughputChart(data) {
+            const ctx = document.getElementById('throughput-chart').getContext('2d');
+            
+            throughputHistory.push(data.throughput_per_second || 0);
+            if (throughputHistory.length > 20) throughputHistory.shift();
+
+            document.getElementById('last-5-min').textContent = 
+                (data.records_last_5_minutes || 0).toLocaleString();
+            document.getElementById('current-speed').textContent = 
+                (data.throughput_per_second || 0).toFixed(2) + ' rec/s';
+
+            if (charts.throughput) {
+                charts.throughput.data.datasets[0].data = throughputHistory;
+                charts.throughput.data.labels = throughputHistory.map((_, i) => `T${i}`);
+                charts.throughput.update();
+            } else {
+                charts.throughput = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: throughputHistory.map((_, i) => `T${i}`),
+                        datasets: [{
+                            label: 'Registros/Segundo',
+                            data: throughputHistory,
+                            borderColor: '#667eea',
+                            backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                            borderWidth: 3,
+                            fill: true,
+                            tension: 0.4,
+                            pointRadius: 4,
+                            pointBackgroundColor: '#667eea',
+                            pointBorderColor: '#fff',
+                            pointBorderWidth: 2
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { position: 'bottom' } },
+                        scales: { y: { beginAtZero: true } }
+                    }
+                });
+            }
+        }
+
+        function updateProcessingRateChart(data) {
+            const ctx = document.getElementById('processing-rate-chart');
+            if (!ctx || !data || !data.history) return;
+
+            const history = data.history || [];
+            const fathersData = history.filter(h => h.member_type === 'fathers').map(h => h.records);
+            const mothersData = history.filter(h => h.member_type === 'mothers').map(h => h.records);
+            const childrenData = history.filter(h => h.member_type === 'children').map(h => h.records);
+            const labels = history.filter(h => h.member_type === 'fathers').map((h, i) => `B${i+1}`);
+
+            document.getElementById('batches-count').textContent = labels.length;
+            
+            const lastUpdate = history.length > 0 ? new Date().toLocaleTimeString('es-ES') : '--';
+            document.getElementById('last-batch-update').textContent = lastUpdate;
+
+            if (charts.processingRate) {
+                charts.processingRate.data.labels = labels;
+                charts.processingRate.data.datasets[0].data = fathersData;
+                charts.processingRate.data.datasets[1].data = mothersData;
+                charts.processingRate.data.datasets[2].data = childrenData;
+                charts.processingRate.update();
+            } else {
+                charts.processingRate = new Chart(ctx.getContext('2d'), {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [
+                            {
+                                label: 'Fathers',
+                                data: fathersData,
+                                borderColor: '#3498db',
+                                backgroundColor: 'rgba(52, 152, 219, 0.1)',
+                                borderWidth: 2,
+                                tension: 0.4,
+                                pointRadius: 3
+                            },
+                            {
+                                label: 'Mothers',
+                                data: mothersData,
+                                borderColor: '#e74c3c',
+                                backgroundColor: 'rgba(231, 76, 60, 0.1)',
+                                borderWidth: 2,
+                                tension: 0.4,
+                                pointRadius: 3
+                            },
+                            {
+                                label: 'Children',
+                                data: childrenData,
+                                borderColor: '#2ecc71',
+                                backgroundColor: 'rgba(46, 204, 113, 0.1)',
+                                borderWidth: 2,
+                                tension: 0.4,
+                                pointRadius: 3
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { position: 'bottom' }
+                        },
+                        scales: {
+                            y: { beginAtZero: true }
+                        }
+                    }
+                });
+            }
+        }
+
+        function updateTimestamp() {
+            const now = new Date().toLocaleTimeString('es-ES');
+            document.getElementById('last-update').textContent = now;
+        }
+
+        // ==================== SNP Distribution ====================
+
+        function updateSNPDistributionChart(data) {
+            if (!data || !data.top_chromosomes) return;
+            
+            const chroms = data.top_chromosomes.all || {};
+            const labels = Object.keys(chroms).slice(0, 12);
+            const values = Object.values(chroms).slice(0, 12);
+            
+            const ctx = document.getElementById('snp-dist-chart');
+            if (!ctx) return;
+            
+            if (charts.snpDist) {
+                charts.snpDist.destroy();
+            }
+            
+            charts.snpDist = new Chart(ctx.getContext('2d'), {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'SNPs por Cromosoma',
+                        data: values,
+                        backgroundColor: 'rgba(102, 126, 234, 0.6)',
+                        borderColor: 'rgba(102, 126, 234, 1)',
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { position: 'bottom' } }
+                }
+            });
+        }
+
+        // ==================== Mendelian Consistency ====================
+
+        function updateMendelianConsistency(data) {
+            if (!data || !data.families || !data.summary) {
+                document.getElementById('avg-consistency').textContent = '--';
+                document.getElementById('perfect-families').textContent = '--';
+                document.getElementById('violated-families').textContent = '--';
+                document.getElementById('total-families-analyzed').textContent = '--';
+                return;
+            }
+            
+            const summary = data.summary;
+            document.getElementById('avg-consistency').textContent = (summary.average_consistency || 0).toFixed(1) + '%';
+            document.getElementById('perfect-families').textContent = (summary.families_perfect || 0).toLocaleString();
+            document.getElementById('violated-families').textContent = (summary.families_with_violations || 0).toLocaleString();
+            document.getElementById('total-families-analyzed').textContent = (summary.total_families_analyzed || 0).toLocaleString();
+            
+            // Crear gráfico de barras
+            const ctx = document.getElementById('mendelian-chart');
+            if (!ctx) return;
+            
+            // Preparar datos - Top 10 familias
+            const families = data.families.slice(0, 10);
+            const labels = families.map((f, i) => `F${i+1}`);
+            const values = families.map(f => f.consistency_percentage);
+            
+            if (charts.mendelian) {
+                charts.mendelian.destroy();
+            }
+            
+            charts.mendelian = new Chart(ctx.getContext('2d'), {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Consistencia Mendeliana (%)',
+                        data: values,
+                        backgroundColor: values.map(v => v === 100 ? '#2ecc71' : v >= 90 ? '#f39c12' : '#e74c3c'),
+                        borderColor: values.map(v => v === 100 ? '#27ae60' : v >= 90 ? '#d68910' : '#c0392b'),
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100,
+                            ticks: { callback: function(value) { return value + '%'; } }
+                        }
+                    },
+                    plugins: {
+                        legend: { position: 'bottom' }
+                    }
+                }
+            });
+        }
+
+        // ==================== Auto-refresh ====================
+
+        refreshAllData();
+        setInterval(refreshAllData, 3000); // Auto-refresh cada 3 segundos
+    </script>
+</body>
+</html>
