@@ -410,6 +410,7 @@
             // Hide all views
             document.getElementById('cluster-view').style.display = 'none';
             document.getElementById('analysis-view').style.display = 'none';
+            document.getElementById('genetic-view').style.display = 'none';
             
             // Show selected view
             document.getElementById(viewId).style.display = 'block';
@@ -439,6 +440,7 @@
         <!-- Main Navigation -->
         <div class="main-nav">
             <button class="nav-btn active" onclick="switchView('cluster-view')">Cluster Metrics</button>
+            <button class="nav-btn" onclick="switchView('genetic-view')">Genetic Streaming</button>
             <button class="nav-btn" onclick="switchView('analysis-view')">Data Analysis</button>
         </div>
 
@@ -625,6 +627,91 @@
         </div>
     </div>
     </div> <!-- Close cluster-view -->
+
+    <!-- View: Genetic Streaming Metrics -->
+    <div id="genetic-view" style="display:none;">
+
+        <!-- Genetic Metrics Overview -->
+        <div class="stats-overview">
+            <div class="stat-card" style="border-left: 4px solid #06b6d4;">
+                <div class="stat-label">🧬 Tasa de Mutación</div>
+                <div class="stat-value" id="mutationRateIndicator" style="color: #06b6d4; text-shadow: 0 0 20px rgba(6, 182, 212, 0.4);">0%</div>
+            </div>
+            <div class="stat-card" style="border-left: 4px solid #8b5cf6;">
+                <div class="stat-label">📊 Variantes Procesadas</div>
+                <div class="stat-value" id="totalVariantsIndicator" style="color: #8b5cf6; text-shadow: 0 0 20px rgba(139, 92, 246, 0.4);">0</div>
+            </div>
+            <div class="stat-card" style="border-left: 4px solid #ec4899;">
+                <div class="stat-label">⚠️ Anomalías Detectadas</div>
+                <div class="stat-value" id="anomalyCountIndicator" style="color: #ec4899; text-shadow: 0 0 20px rgba(236, 72, 153, 0.4);">0</div>
+            </div>
+            <div class="stat-card" style="border-left: 4px solid #f59e0b;">
+                <div class="stat-label">📈 Tendencia Mutaciones</div>
+                <div class="stat-value" id="mutationTrendIndicator" style="color: #f59e0b; text-shadow: 0 0 20px rgba(245, 158, 11, 0.4);">+0%</div>
+            </div>
+        </div>
+
+        <!-- Genetic Charts Grid -->
+        <div class="charts-grid">
+            <div class="chart-container">
+                <div class="chart-title">Tasa de Mutación en Tiempo Real</div>
+                <div class="chart-body">
+                    <canvas id="mutationRateChart"></canvas>
+                </div>
+            </div>
+            
+            <div class="chart-container">
+                <div class="chart-title">Distribución de Genotipos</div>
+                <div class="chart-body">
+                    <canvas id="genotypeDistributionChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div class="charts-grid">
+            <div class="chart-container">
+                <div class="chart-title">Top 5 Genes Detectados</div>
+                <div class="chart-body">
+                    <canvas id="topGenesChart"></canvas>
+                </div>
+            </div>
+            
+            <div class="chart-container">
+                <div class="chart-title">Top 5 Variantes Genéticas</div>
+                <div class="chart-body">
+                    <canvas id="topVariantsChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Genetic Orientation & Diversity -->
+        <div class="chart-container" style="margin-bottom: 20px;">
+            <div class="chart-title">Orientación Genética & Diversidad</div>
+            <div class="chart-body" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px;">
+                <div style="background: #0f1419; padding: 20px; border-radius: 8px; border-left: 3px solid #10b981;">
+                    <div style="color: #94a3b8; font-size: 0.9em; margin-bottom: 8px;">Genotipos Dominantes</div>
+                    <div style="color: #10b981; font-size: 1.8em; font-weight: 700;" id="genotypeDominantPercent">0%</div>
+                </div>
+                <div style="background: #0f1419; padding: 20px; border-radius: 8px; border-left: 3px solid #ef4444;">
+                    <div style="color: #94a3b8; font-size: 0.9em; margin-bottom: 8px;">Genotipos Recesivos</div>
+                    <div style="color: #ef4444; font-size: 1.8em; font-weight: 700;" id="genotypeRecessivePercent">0%</div>
+                </div>
+                <div style="background: #0f1419; padding: 20px; border-radius: 8px; border-left: 3px solid #3b82f6;">
+                    <div style="color: #94a3b8; font-size: 0.9em; margin-bottom: 8px;">Genotipos Heterocigotos</div>
+                    <div style="color: #3b82f6; font-size: 1.8em; font-weight: 700;" id="genotypeHeterozygousPercent">0%</div>
+                </div>
+                <div style="background: #0f1419; padding: 20px; border-radius: 8px; border-left: 3px solid #06b6d4;">
+                    <div style="color: #94a3b8; font-size: 0.9em; margin-bottom: 8px;">Diversidad Genética</div>
+                    <div style="color: #06b6d4; font-size: 1.8em; font-weight: 700;" id="geneticDiversityIndicator">0%</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <strong>Streaming Genético Activo:</strong> Se monitorean variantes genéticas en tiempo real desde Kafka con análisis de tendencias y detección de anomalías.
+        </footer>
+    </div>
 
     <!-- View: Data Analysis -->
     <div id="analysis-view" style="display:none;">

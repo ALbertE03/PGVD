@@ -992,12 +992,264 @@ async function updateTaskTimes() {
     }
 }
 
+// ============== MÉTRICAS AVANZADAS DE STREAMING GENÉTICO ==============
+
+let geneticCharts = {};
+
+function initializeGeneticCharts() {
+    const colors = getThemeColors();
+    
+    // Gráfico de Tasa de Mutación en Tiempo Real
+    geneticCharts.mutationRate = new Chart(document.getElementById('mutationRateChart'), {
+        type: 'line',
+        data: {
+            labels: [],
+            datasets: [{
+                label: 'Tasa de Mutación (por segundo)',
+                data: [],
+                borderColor: colors.cyan,
+                backgroundColor: colors.cyan + '20',
+                tension: 0.4,
+                borderWidth: 3,
+                pointRadius: 3,
+                pointBackgroundColor: colors.cyan,
+                fill: true
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            animation: false,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    grid: { color: colors.gridColor },
+                    ticks: { color: colors.textColor }
+                },
+                x: {
+                    grid: { display: false },
+                    ticks: { color: colors.textColor }
+                }
+            },
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: { color: colors.textColor, padding: 15 }
+                }
+            }
+        }
+    });
+    
+    // Gráfico de Distribución de Genotipos (Pie)
+    geneticCharts.genotypeDistribution = new Chart(document.getElementById('genotypeDistributionChart'), {
+        type: 'doughnut',
+        data: {
+            labels: ['Dominante', 'Recesivo', 'Heterocigoto'],
+            datasets: [{
+                data: [0, 0, 0],
+                backgroundColor: [colors.green, colors.red, colors.blue],
+                borderWidth: 2,
+                borderColor: colors.gridColor,
+                hoverOffset: 10
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            cutout: '60%',
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: { color: colors.textColor, padding: 15 }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return context.label + ': ' + context.raw;
+                        }
+                    }
+                }
+            }
+        }
+    });
+    
+    // Gráfico de Top Genes (Bar Chart)
+    geneticCharts.topGenes = new Chart(document.getElementById('topGenesChart'), {
+        type: 'bar',
+        data: {
+            labels: [],
+            datasets: [{
+                label: 'Frecuencia de Genes',
+                data: [],
+                backgroundColor: [colors.purple, colors.amber, colors.cyan, colors.pink, colors.green],
+                borderRadius: 8,
+                borderWidth: 0
+            }]
+        },
+        options: {
+            indexAxis: 'y',
+            responsive: true,
+            maintainAspectRatio: true,
+            animation: false,
+            plugins: {
+                legend: { display: false }
+            },
+            scales: {
+                x: {
+                    grid: { color: colors.gridColor },
+                    ticks: { color: colors.textColor }
+                },
+                y: {
+                    grid: { display: false },
+                    ticks: { color: colors.textColor }
+                }
+            }
+        }
+    });
+    
+    // Gráfico de Top Variantes (Horizontal Bar)
+    geneticCharts.topVariants = new Chart(document.getElementById('topVariantsChart'), {
+        type: 'bar',
+        data: {
+            labels: [],
+            datasets: [{
+                label: 'Frecuencia de Variantes',
+                data: [],
+                backgroundColor: [colors.amber, colors.cyan, colors.pink, colors.red, colors.green],
+                borderRadius: 8,
+                borderWidth: 0
+            }]
+        },
+        options: {
+            indexAxis: 'y',
+            responsive: true,
+            maintainAspectRatio: true,
+            animation: false,
+            plugins: {
+                legend: { display: false }
+            },
+            scales: {
+                x: {
+                    grid: { color: colors.gridColor },
+                    ticks: { color: colors.textColor }
+                },
+                y: {
+                    grid: { display: false },
+                    ticks: { color: colors.textColor }
+                }
+            }
+        }
+    });
+}
+
+function updateGeneticMetrics() {
+    try {
+        // Obtener métricas genéticas
+        fetch('/api/genetic_metrics')
+            .then(res => res.json())
+            .then(metrics => {
+                const colors = getThemeColors();
+                
+                // Actualizar tasa de mutación
+                if (geneticCharts.mutationRate) {
+                    const history = metrics.mutation_rate_history || [];
+                    geneticCharts.mutationRate.data.labels = history.map((_, i) => i);
+                    geneticCharts.mutationRate.data.datasets[0].data = history;
+                    geneticCharts.mutationRate.update('none');
+                }
+                
+                // Actualizar distribución de genotipos
+                if (geneticCharts.genotypeDistribution) {
+                    const dist = metrics.genotype_distribution || {};
+                    geneticCharts.genotypeDistribution.data.datasets[0].data = [
+                        dist.dominant || 0,
+                        dist.recessive || 0,
+                        dist.heterozygous || 0
+                    ];
+                    geneticCharts.genotypeDistribution.update('none');
+                }
+                
+                // Actualizar Top Genes
+                if (geneticCharts.topGenes && metrics.top_genes) {
+                    geneticCharts.topGenes.data.labels = metrics.top_genes.map(g => g.gene);
+                    geneticCharts.topGenes.data.datasets[0].data = metrics.top_genes.map(g => g.count);
+                    geneticCharts.topGenes.update('none');
+                }
+                
+                // Actualizar Top Variantes
+                if (geneticCharts.topVariants && metrics.top_variants) {
+                    geneticCharts.topVariants.data.labels = metrics.top_variants.map(v => v.type);
+                    geneticCharts.topVariants.data.datasets[0].data = metrics.top_variants.map(v => v.count);
+                    geneticCharts.topVariants.update('none');
+                }
+                
+                // Actualizar indicadores de métricas avanzadas
+                updateGeneticIndicators(metrics);
+            })
+            .catch(err => console.error('Error fetching genetic metrics:', err));
+    } catch (error) {
+        console.error('Error updating genetic metrics:', error);
+    }
+}
+
+function updateGeneticIndicators(metrics) {
+    // Actualizar indicador de tasa de mutación
+    const mutRateEl = document.getElementById('mutationRateIndicator');
+    if (mutRateEl) {
+        mutRateEl.textContent = (metrics.mutation_rate_percent || 0).toFixed(2) + '%';
+        mutRateEl.className = metrics.mutation_rate_percent > 5 ? 'metric-high' : metrics.mutation_rate_percent > 2 ? 'metric-medium' : 'metric-low';
+    }
+    
+    // Actualizar indicador de anomalías
+    const anomalyEl = document.getElementById('anomalyCountIndicator');
+    if (anomalyEl) {
+        anomalyEl.textContent = metrics.anomaly_count || 0;
+    }
+    
+    // Actualizar indicador de variantes procesadas
+    const variantsEl = document.getElementById('totalVariantsIndicator');
+    if (variantsEl) {
+        variantsEl.textContent = metrics.total_variants_processed || 0;
+    }
+    
+    // Obtener tendencias
+    fetch('/api/genetic_trends')
+        .then(res => res.json())
+        .then(trends => {
+            // Actualizar tendencia de tasa de mutación
+            const trendEl = document.getElementById('mutationTrendIndicator');
+            if (trendEl) {
+                const changePercent = trends.rate_change_percent || 0;
+                trendEl.textContent = (changePercent > 0 ? '+' : '') + changePercent.toFixed(2) + '%';
+                trendEl.className = 'trend-' + (trends.trend_direction || 'stable');
+            }
+            
+            // Actualizar diversidad genética
+            const diversityEl = document.getElementById('geneticDiversityIndicator');
+            if (diversityEl) {
+                diversityEl.textContent = (trends.genetic_diversity * 100).toFixed(2) + '%';
+            }
+            
+            // Mostrar distribución de genotipos
+            Object.keys(trends.genotype_percentages || {}).forEach(gtype => {
+                const el = document.getElementById(`genotype${gtype.charAt(0).toUpperCase() + gtype.slice(1)}Percent`);
+                if (el) {
+                    el.textContent = (trends.genotype_percentages[gtype] || 0).toFixed(2) + '%';
+                }
+            });
+        })
+        .catch(err => console.error('Error fetching genetic trends:', err));
+}
+
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', () => {
     initializeCharts();
+    initializeGeneticCharts();
     updateDashboard();
+    updateGeneticMetrics();
     loadFamilies('fathers');
 
     // Auto-refresh every 3 seconds
     setInterval(updateDashboard, 3000);
+    setInterval(updateGeneticMetrics, 2000);
 });

@@ -20,7 +20,16 @@ metrics_data = {
     'batches_processed': 0,
     'processing_history': deque(maxlen=50),
     'task_completion_times': [],  # Lista ilimitada de tiempos de completado de tareas
-    'families_completed': 0  # Contador de familias completadas
+    'families_completed': 0,  # Contador de familias completadas
+    # Métricas avanzadas de streaming genético
+    'genetic_metrics': {
+        'time_window': deque(maxlen=300),  # Últimas 300 muestras (5 min a 1 muestra/seg)
+        'variant_types': {},  # Tipo de variante -> contador
+        'gene_frequency': {},  # Gen -> frecuencia
+        'genotype_distribution': {'dominant': 0, 'recessive': 0, 'heterozygous': 0},
+        'mutation_rate_window': deque(maxlen=60),  # Tasa de mutación por ventana
+        'anomaly_count': 0  # Conteo de anomalías detectadas
+    }
 }
 
 
@@ -610,6 +619,40 @@ def receive_metrics():
                         'processing_time': processing_time,
                         'records': data.get('total_records', 0)
                     })
+                
+                # ========== PROCESAR MÉTRICAS GENÉTICAS ==========
+                genetic_data = data.get('genetic_data', {})
+                if genetic_data:
+                    # Analizar datos genéticos
+                    gen_info = analyze_genetic_data(genetic_data)
+                    
+                    # Actualizar tipos de variantes
+                    variant_type = gen_info['variant_type']
+                    if variant_type not in metrics_data['genetic_metrics']['variant_types']:
+                        metrics_data['genetic_metrics']['variant_types'][variant_type] = 0
+                    metrics_data['genetic_metrics']['variant_types'][variant_type] += 1
+                    
+                    # Actualizar frecuencia de genes
+                    gene = gen_info['gene']
+                    if gene not in metrics_data['genetic_metrics']['gene_frequency']:
+                        metrics_data['genetic_metrics']['gene_frequency'][gene] = 0
+                    metrics_data['genetic_metrics']['gene_frequency'][gene] += 1
+                    
+                    # Detectar orientación genética y actualizar distribución
+                    genotype = gen_info['genotype']
+                    genotype_orientation = detect_genotype_orientation(genotype)
+                    if genotype_orientation:
+                        metrics_data['genetic_metrics']['genotype_distribution'][genotype_orientation] += 1
+                    
+                    # Agregar timestamp a la ventana de tiempo (para calcular tasa de mutación)
+                    metrics_data['genetic_metrics']['time_window'].append(datetime.now().timestamp())
+                    
+                    # Calcular y guardar tasa de mutación actual
+                    current_mutation_rate = calculate_mutation_rate(
+                        metrics_data['genetic_metrics']['time_window'],
+                        window_seconds=60
+                    )
+                    metrics_data['genetic_metrics']['mutation_rate_window'].append(current_mutation_rate)
         
         return jsonify({'status': 'success'})
         
@@ -729,6 +772,155 @@ def spark_jobs():
         result['error'] = str(e)
     
     return jsonify(result)
+
+
+# ============== MÉTRICAS AVANZADAS DE STREAMING GENÉTICO ==============
+
+def analyze_genetic_data(data):
+    """Analizar datos genéticos para extraer métricas avanzadas"""
+    genetic_info = {
+        'variant_type': data.get('variant_type', 'SNP'),
+        'gene': data.get('gene', 'Unknown'),
+        'genotype': data.get('genotype', 'Unknown'),
+        'chromosome': data.get('chromosome', 0),
+        'position': data.get('position', 0),
+        'quality': data.get('quality', 0)
+    }
+    return genetic_info
+
+
+def detect_genotype_orientation(genotype_str):
+    """Detectar la orientación genética (dominante/recesiva/heterocigota)"""
+    if genotype_str == 'Unknown':
+        return None
+    
+    # Ejemplo: '0/0' = homocigoto recesivo, '0/1' = heterocigoto, '1/1' = homocigoto dominante
+    try:
+        alleles = genotype_str.split('/')
+        if len(alleles) == 2:
+            a1, a2 = int(alleles[0]), int(alleles[1])
+            if a1 == 0 and a2 == 0:
+                return 'recessive'
+            elif a1 == 1 and a2 == 1:
+                return 'dominant'
+            else:
+                return 'heterozygous'
+    except:
+        pass
+    return None
+
+
+def calculate_mutation_rate(time_window, window_seconds=60):
+    """Calcular tasa de mutación por ventana de tiempo"""
+    current_time = datetime.now().timestamp()
+    recent_mutations = sum(1 for ts in time_window if current_time - ts < window_seconds)
+    return recent_mutations / window_seconds if window_seconds > 0 else 0
+
+
+@app.route('/api/genetic_metrics')
+def api_genetic_metrics():
+    """API para métricas avanzadas de streaming genético"""
+    with metrics_lock:
+        genetic = metrics_data['genetic_metrics']
+        
+        # Calcular estadísticas de la ventana de tiempo
+        window_size = len(genetic['time_window'])
+        mutation_rate = calculate_mutation_rate(genetic['time_window'])
+        
+        # Top genes
+        top_genes = sorted(
+            genetic['gene_frequency'].items(),
+            key=lambda x: x[1],
+            reverse=True
+        )[:5]
+        
+        # Top variantes
+        top_variants = sorted(
+            genetic['variant_types'].items(),
+            key=lambda x: x[1],
+            reverse=True
+        )[:5]
+        
+        return jsonify({
+            'window_size': window_size,
+            'mutation_rate': round(mutation_rate, 4),
+            'mutation_rate_percent': round(mutation_rate * 100, 2),
+            'genotype_distribution': genetic['genotype_distribution'],
+            'top_genes': [{'gene': g, 'count': c} for g, c in top_genes],
+            'top_variants': [{'type': v, 'count': c} for v, c in top_variants],
+            'anomaly_count': genetic['anomaly_count'],
+            'total_variants_processed': sum(genetic['variant_types'].values()),
+            'mutation_rate_history': list(genetic['mutation_rate_window'])
+        })
+
+
+@app.route('/api/genetic_trends')
+def api_genetic_trends():
+    """API para tendencias genéticas en tiempo real"""
+    with metrics_lock:
+        genetic = metrics_data['genetic_metrics']
+        
+        # Calcular tendencias (variación respecto a hace 30 segundos)
+        current_rate = calculate_mutation_rate(genetic['time_window'], 30)
+        prev_rate = genetic['mutation_rate_window'][-1] if genetic['mutation_rate_window'] else 0
+        
+        rate_change = 0
+        if prev_rate > 0:
+            rate_change = ((current_rate - prev_rate) / prev_rate) * 100
+        
+        # Distribución de genotipos
+        total_genotypes = sum(genetic['genotype_distribution'].values())
+        genotype_percentages = {}
+        if total_genotypes > 0:
+            for gtype, count in genetic['genotype_distribution'].items():
+                genotype_percentages[gtype] = round((count / total_genotypes) * 100, 2)
+        
+        return jsonify({
+            'current_mutation_rate': round(current_rate, 4),
+            'rate_change_percent': round(rate_change, 2),
+            'trend_direction': 'up' if rate_change > 5 else 'down' if rate_change < -5 else 'stable',
+            'genotype_percentages': genotype_percentages,
+            'genetic_diversity': round(len(genetic['gene_frequency']) / (total_genotypes + 1), 4) if total_genotypes > 0 else 0,
+            'anomaly_rate': round((genetic['anomaly_count'] / (sum(genetic['variant_types'].values()) + 1)) * 100, 2)
+        })
+
+
+@app.route('/api/genetic_alert', methods=['POST'])
+def api_genetic_alert():
+    """Detectar y reportar anomalías genéticas"""
+    try:
+        data = request.get_json()
+        variant_data = data.get('variant', {})
+        threshold = data.get('anomaly_threshold', 2.5)  # Desviaciones estándar
+        
+        with metrics_lock:
+            genetic = metrics_data['genetic_metrics']
+            
+            # Calcular tasa esperada
+            expected_rate = calculate_mutation_rate(genetic['time_window'], 60)
+            current_rate = calculate_mutation_rate(genetic['time_window'], 10)
+            
+            # Detectar anomalía (si la tasa actual es significativamente diferente)
+            is_anomaly = False
+            severity = 'normal'
+            
+            if expected_rate > 0:
+                deviation = abs(current_rate - expected_rate) / expected_rate
+                if deviation > threshold:
+                    is_anomaly = True
+                    genetic['anomaly_count'] += 1
+                    severity = 'high' if deviation > threshold * 2 else 'medium'
+            
+            return jsonify({
+                'is_anomaly': is_anomaly,
+                'severity': severity,
+                'expected_rate': round(expected_rate, 4),
+                'current_rate': round(current_rate, 4),
+                'deviation': round((current_rate - expected_rate), 4)
+            })
+    
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 
 if __name__ == '__main__':
