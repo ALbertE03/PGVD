@@ -12,8 +12,7 @@ from pyspark.sql.types import StructType, StructField, StringType, IntegerType
 import requests
 import os
 import time
-from collections import Counter
-import math
+
 
 # Configuración
 KAFKA_BROKER = os.getenv('KAFKA_BROKER_URL', 'kafka:9092')
