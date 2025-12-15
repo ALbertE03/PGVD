@@ -9,7 +9,7 @@ RUN apt-get update && \
 
 RUN pip install --no-cache-dir requests kazoo
 
-# Pre-descargar paquetes Kafka de Maven (misma versión que driver: Spark 4.0.0 / Scala 2.13)
+
 RUN cd /opt/spark/jars && \
     curl -L -O "https://repo1.maven.org/maven2/org/apache/kafka/kafka-clients/3.6.0/kafka-clients-3.6.0.jar" && \
     curl -L -O "https://repo1.maven.org/maven2/org/apache/spark/spark-sql-kafka-0-10_2.13/4.0.0/spark-sql-kafka-0-10_2.13-4.0.0.jar" && \

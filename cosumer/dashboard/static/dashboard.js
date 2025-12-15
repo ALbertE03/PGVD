@@ -198,6 +198,182 @@ function initializeCharts() {
         }
     });
 
+    // Task Completion Times Chart - Line Chart (conexas por tipo) - Optimizado
+    charts.taskTimes = new Chart(document.getElementById('taskTimesChart'), {
+        type: 'line',
+        data: {
+            datasets: [
+                {
+                    label: 'Fathers',
+                    data: [],
+                    borderColor: colors.blue,
+                    backgroundColor: colors.blue + '20',
+                    tension: 0.3,
+                    borderWidth: 2,
+                    pointRadius: 2,
+                    pointHoverRadius: 5,
+                    pointBackgroundColor: colors.blue,
+                    pointBorderColor: colors.blue,
+                    pointHoverBackgroundColor: colors.blue,
+                    pointHoverBorderColor: '#ffffff',
+                    pointHoverBorderWidth: 2,
+                    fill: false,
+                    segment: {
+                        borderColor: ctx => ctx.p0.skip || ctx.p1.skip ? 'transparent' : undefined
+                    }
+                },
+                {
+                    label: 'Mothers',
+                    data: [],
+                    borderColor: colors.red,
+                    backgroundColor: colors.red + '20',
+                    tension: 0.3,
+                    borderWidth: 2,
+                    pointRadius: 2,
+                    pointHoverRadius: 5,
+                    pointBackgroundColor: colors.red,
+                    pointBorderColor: colors.red,
+                    pointHoverBackgroundColor: colors.red,
+                    pointHoverBorderColor: '#ffffff',
+                    pointHoverBorderWidth: 2,
+                    fill: false,
+                    segment: {
+                        borderColor: ctx => ctx.p0.skip || ctx.p1.skip ? 'transparent' : undefined
+                    }
+                },
+                {
+                    label: 'Children',
+                    data: [],
+                    borderColor: colors.green,
+                    backgroundColor: colors.green + '20',
+                    tension: 0.3,
+                    borderWidth: 2,
+                    pointRadius: 2,
+                    pointHoverRadius: 5,
+                    pointBackgroundColor: colors.green,
+                    pointBorderColor: colors.green,
+                    pointHoverBackgroundColor: colors.green,
+                    pointHoverBorderColor: '#ffffff',
+                    pointHoverBorderWidth: 2,
+                    fill: false,
+                    segment: {
+                        borderColor: ctx => ctx.p0.skip || ctx.p1.skip ? 'transparent' : undefined
+                    }
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            animation: false, // Deshabilitar animaciones para mejor performance
+            interaction: {
+                mode: 'nearest',
+                intersect: false,
+                axis: 'x'
+            },
+            parsing: false, // Deshabilitar parsing automático
+            normalized: true, // Los datos ya vienen normalizados
+            scales: {
+                y: { 
+                    beginAtZero: true,
+                    grid: { 
+                        color: colors.gridColor,
+                        drawTicks: false
+                    },
+                    ticks: { 
+                        color: colors.textColor,
+                        maxTicksLimit: 8
+                    },
+                    title: {
+                        display: true,
+                        text: 'Tiempo (ms)',
+                        color: colors.textColor,
+                        font: { size: 12, weight: 'bold' }
+                    }
+                },
+                x: {
+                    type: 'linear',
+                    grid: { 
+                        display: false
+                    },
+                    ticks: { 
+                        color: colors.textColor,
+                        maxTicksLimit: 15,
+                        autoSkip: true
+                    },
+                    title: {
+                        display: true,
+                        text: 'Número de Tarea',
+                        color: colors.textColor,
+                        font: { size: 12, weight: 'bold' }
+                    }
+                }
+            },
+            plugins: {
+                legend: { 
+                    display: true,
+                    position: 'top',
+                    labels: { 
+                        usePointStyle: true, 
+                        padding: 20,
+                        color: colors.textColor,
+                        font: { size: 13, weight: '600' }
+                    }
+                },
+                tooltip: {
+                    enabled: true,
+                    mode: 'nearest',
+                    intersect: false,
+                    backgroundColor: 'rgba(0, 0, 0, 0.9)',
+                    titleColor: colors.textColor,
+                    bodyColor: colors.textColor,
+                    borderColor: 'rgba(255, 255, 255, 0.3)',
+                    borderWidth: 1,
+                    padding: 12,
+                    displayColors: true,
+                    callbacks: {
+                        title: function(context) {
+                            const taskNum = Math.round(context[0].parsed.x) + 1;
+                            return 'Tarea #' + taskNum;
+                        },
+                        label: function(context) {
+                            const label = context.dataset.label || '';
+                            const value = context.parsed.y;
+                            return label + ': ' + value.toFixed(2) + ' ms';
+                        }
+                    }
+                },
+                decimation: {
+                    enabled: true,
+                    algorithm: 'lttb',
+                    samples: 500
+                }
+            }
+        },
+        plugins: [{
+            id: 'verticalLineOnHover',
+            afterDraw: (chart) => {
+                if (chart.tooltip?._active?.length) {
+                    const ctx = chart.ctx;
+                    const activePoint = chart.tooltip._active[0];
+                    const x = activePoint.element.x;
+                    const topY = chart.scales.y.top;
+                    const bottomY = chart.scales.y.bottom;
+
+                    // Dibujar línea vertical blanca
+                    ctx.save();
+                    ctx.beginPath();
+                    ctx.moveTo(x, topY);
+                    ctx.lineTo(x, bottomY);
+                    ctx.lineWidth = 1;
+                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+                    ctx.setLineDash([5, 5]);
+                    ctx.stroke();
+                    ctx.restore();
+                }
+            }
+        }]
+    });
 
 }
 
@@ -211,6 +387,7 @@ async function updateDashboard() {
         document.getElementById('children-count').textContent = formatNumber(stats.children);
         document.getElementById('total-count').textContent = formatNumber(stats.total);
         document.getElementById('batches-count').textContent = stats.batches_processed;
+        document.getElementById('families-completed-count').textContent = formatNumber(stats.families_completed);
         document.getElementById('last-update').textContent = new Date(stats.last_update).toLocaleString('es-ES');
 
         // Update processing history
@@ -229,6 +406,9 @@ async function updateDashboard() {
         
         // Update Spark Jobs Performance Metrics
         updateSparkJobs();
+
+        // Update Task Completion Times
+        updateTaskTimes();
 
     } catch (error) {
         console.error('Error updating dashboard:', error);
@@ -758,6 +938,58 @@ async function loadFamilies(type) {
 
 function formatNumber(num) {
     return num.toLocaleString('es-ES');
+}
+
+// Update task completion times chart - Optimizado para grandes volúmenes
+async function updateTaskTimes() {
+    try {
+        const data = await fetch('/api/task_times').then(r => r.json());
+        const taskTimes = data.task_times;
+        
+        if (!taskTimes || taskTimes.length === 0) {
+            return;
+        }
+        
+        // Limitar cantidad de puntos mostrados para mejor performance
+        const maxPoints = 50; // Mostrar solo los últimos 50 puntos de cada tipo
+        
+        // Separar por tipo pero en líneas conexas
+        const fathersTimes = [];
+        const mothersTimes = [];
+        const childrenTimes = [];
+        
+        let fathersIdx = 0;
+        let mothersIdx = 0;
+        let childrenIdx = 0;
+        
+        taskTimes.forEach((task) => {
+            if (task.member_type === 'fathers') {
+                fathersTimes.push({x: fathersIdx++, y: task.processing_time});
+            } else if (task.member_type === 'mothers') {
+                mothersTimes.push({x: mothersIdx++, y: task.processing_time});
+            } else if (task.member_type === 'children') {
+                childrenTimes.push({x: childrenIdx++, y: task.processing_time});
+            }
+        });
+        
+        // Aplicar límite y hacer downsampling si es necesario
+        const downsample = (data, limit) => {
+            if (data.length <= limit) return data;
+            const step = Math.ceil(data.length / limit);
+            return data.filter((_, i) => i % step === 0).slice(-limit);
+        };
+        
+        // Actualizar gráfica con datos limitados
+        charts.taskTimes.data.datasets[0].data = downsample(fathersTimes, maxPoints);
+        charts.taskTimes.data.datasets[1].data = downsample(mothersTimes, maxPoints);
+        charts.taskTimes.data.datasets[2].data = downsample(childrenTimes, maxPoints);
+        
+        // Actualizar sin animación para mejor performance
+        charts.taskTimes.update('none');
+        
+    } catch (error) {
+        console.error('Error updating task times:', error);
+    }
 }
 
 // Initialize on page load

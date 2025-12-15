@@ -51,23 +51,6 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
-  # ==================== KAFKA UI ====================
-
-  kafka-ui:
-    image: provectuslabs/kafka-ui:latest
-    container_name: kafka-ui
-    hostname: kafka-ui
-    environment:
-      KAFKA_CLUSTERS_0_NAME: genomic-cluster
-      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
-      DYNAMIC_CONFIG_ENABLED: 'true'
-    ports:
-      - "8090:8080"
-    networks:
-      - producer_default
-      - hadoop
-    restart: unless-stopped
-
   # ==================== ZOOKEEPER FOR SPARK HA ====================
 
   zookeeper:

@@ -40,10 +40,13 @@ def create_spark_session():
     """Crea y configura la sesión de Spark"""
     print(f"🚀 Conectando al cluster Spark...")
     
-    # Obtener número de cores del cluster dinámicamente
-    # Spark autodetectará esto, pero podemos dar un hint inicial
+
     spark = SparkSession.builder \
         .appName("GenomicDataConsumer") \
+        .config("spark.driver.memory", "2g") \
+        .config("spark.executor.memory", "3g") \
+        .config("spark.memory.fraction", "0.8") \
+        .config("spark.memory.storageFraction", "0.3") \
         .config("spark.streaming.stopGracefullyOnShutdown", "true") \
         .config("spark.sql.streaming.schemaInference", "true") \
         .config("spark.sql.adaptive.enabled", "true") \
@@ -124,19 +127,43 @@ def read_kafka_stream(spark, topic, schema):
     return parsed_df
 
 def calculate_and_send_metrics(batch_df, batch_id, member_type):
-    """Calcula métricas del batch y las envía al dashboard - Solo para gráfica de velocidad de procesamiento"""
+    """Calcula métricas del batch y las envía al dashboard - Incluye tiempo de procesamiento"""
     if batch_df.isEmpty():
         return
     
     try:
+        # Medir tiempo de procesamiento
+        start_time = time.time()
+        
+        # Detectar tokens de finalización de familia
+        completion_tokens = batch_df.filter(col("snp_data").isNull()).collect()
+        for token_row in completion_tokens:
+            token_data = token_row.asDict()
+            if 'family_id' in token_data:
+                # Enviar token de finalización al dashboard
+                completion_payload = {
+                    'message_type': 'FAMILY_COMPLETE',
+                    'family_id': token_data.get('family_id'),
+                    'timestamp': str(current_timestamp())
+                }
+                requests.post(
+                    f"{DASHBOARD_URL}/api/metrics",
+                    json=completion_payload,
+                    timeout=5
+                )
+        
         # Solo contamos registros para la gráfica de velocidad
         total_records = batch_df.count()
+        
+        # Calcular tiempo de procesamiento en milisegundos
+        processing_time = (time.time() - start_time) * 1000
         
         metrics = {
             'member_type': member_type,
             'batch_id': batch_id,
             'timestamp': str(batch_df.select(current_timestamp()).first()[0]),
-            'total_records': total_records
+            'total_records': total_records,
+            'processing_time': processing_time
         }
         
         # Enviar métricas al dashboard
@@ -147,7 +174,7 @@ def calculate_and_send_metrics(batch_df, batch_id, member_type):
         )
         
         if response.status_code == 200:
-            print(f"📊 [{member_type}] Batch {batch_id}: {total_records} registros procesados")
+            print(f"📊 [{member_type}] Batch {batch_id}: {total_records} registros procesados en {processing_time:.2f}ms")
         else:
             print(f"⚠️  Error enviando métricas [{member_type}]: {response.status_code}")
             

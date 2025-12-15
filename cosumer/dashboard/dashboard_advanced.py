@@ -18,7 +18,9 @@ metrics_data = {
     'children': {'total_records': 0},
     'last_update': datetime.now(),
     'batches_processed': 0,
-    'processing_history': deque(maxlen=50)
+    'processing_history': deque(maxlen=50),
+    'task_completion_times': [],  # Lista ilimitada de tiempos de completado de tareas
+    'families_completed': 0  # Contador de familias completadas
 }
 
 
@@ -498,6 +500,7 @@ def api_stats():
                 metrics_data['children']['total_records']
             ]),
             'batches_processed': metrics_data['batches_processed'],
+            'families_completed': metrics_data['families_completed'],
             'last_update': metrics_data['last_update'].isoformat()
         })
 
@@ -558,12 +561,29 @@ def api_processing_history():
         })
 
 
+@app.route('/api/task_times')
+def api_task_times():
+    """API para tiempos de completado de tareas"""
+    with metrics_lock:
+        return jsonify({
+            'task_times': metrics_data['task_completion_times']
+        })
+
+
 @app.route('/api/metrics', methods=['POST'])
 def receive_metrics():
     """Recibir métricas desde Spark"""
     try:
         data = request.get_json()
         member_type = data.get('member_type')
+        
+        # Detectar token de finalización de familia
+        if data.get('message_type') == 'FAMILY_COMPLETE':
+            with metrics_lock:
+                metrics_data['families_completed'] += 1
+                metrics_data['last_update'] = datetime.now()
+            print(f"✅ Familia completada: {data.get('family_id')} - Total: {metrics_data['families_completed']}")
+            return jsonify({'status': 'success', 'family_completed': True})
         
         with metrics_lock:
             if member_type in metrics_data:
@@ -580,6 +600,16 @@ def receive_metrics():
                     'member_type': member_type,
                     'records': data.get('total_records', 0)
                 })
+                
+                # Almacenar tiempo de procesamiento si existe
+                processing_time = data.get('processing_time')
+                if processing_time is not None:
+                    metrics_data['task_completion_times'].append({
+                        'timestamp': datetime.now().isoformat(),
+                        'member_type': member_type,
+                        'processing_time': processing_time,
+                        'records': data.get('total_records', 0)
+                    })
         
         return jsonify({'status': 'success'})
         
