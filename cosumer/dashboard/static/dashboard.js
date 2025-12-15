@@ -1044,38 +1044,38 @@ function initializeGeneticCharts() {
         }
     });
     
-    // Gráfico de Distribución de Genotipos (Pie)
-    geneticCharts.genotypeDistribution = new Chart(document.getElementById('genotypeDistributionChart'), {
-        type: 'doughnut',
-        data: {
-            labels: ['Dominante', 'Recesivo', 'Heterocigoto'],
-            datasets: [{
-                data: [0, 0, 0],
-                backgroundColor: [colors.green, colors.red, colors.blue],
-                borderWidth: 2,
-                borderColor: colors.gridColor,
-                hoverOffset: 10
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: true,
-            cutout: '60%',
-            plugins: {
-                legend: {
-                    position: 'bottom',
-                    labels: { color: colors.textColor, padding: 15 }
-                },
-                tooltip: {
-                    callbacks: {
-                        label: function(context) {
-                            return context.label + ': ' + context.raw;
-                        }
-                    }
-                }
-            }
-        }
-    });
+    // // Gráfico de Distribución de Genotipos (Pie)
+    // geneticCharts.genotypeDistribution = new Chart(document.getElementById('genotypeDistributionChart'), {
+    //     type: 'doughnut',
+    //     data: {
+    //         labels: ['Dominante', 'Recesivo', 'Heterocigoto'],
+    //         datasets: [{
+    //             data: [0, 0, 0],
+    //             backgroundColor: [colors.green, colors.red, colors.blue],
+    //             borderWidth: 2,
+    //             borderColor: colors.gridColor,
+    //             hoverOffset: 10
+    //         }]
+    //     },
+    //     options: {
+    //         responsive: true,
+    //         maintainAspectRatio: true,
+    //         cutout: '60%',
+    //         plugins: {
+    //             legend: {
+    //                 position: 'bottom',
+    //                 labels: { color: colors.textColor, padding: 15 }
+    //             },
+    //             tooltip: {
+    //                 callbacks: {
+    //                     label: function(context) {
+    //                         return context.label + ': ' + context.raw;
+    //                     }
+    //                 }
+    //             }
+    //         }
+    //     }
+    // });
     
     // Gráfico de Top Genes (Bar Chart)
     geneticCharts.topGenes = new Chart(document.getElementById('topGenesChart'), {
@@ -1111,39 +1111,39 @@ function initializeGeneticCharts() {
         }
     });
     
-    // Gráfico de Top Variantes (Horizontal Bar)
-    geneticCharts.topVariants = new Chart(document.getElementById('topVariantsChart'), {
-        type: 'bar',
-        data: {
-            labels: [],
-            datasets: [{
-                label: 'Frecuencia de Variantes',
-                data: [],
-                backgroundColor: [colors.amber, colors.cyan, colors.pink, colors.red, colors.green],
-                borderRadius: 8,
-                borderWidth: 0
-            }]
-        },
-        options: {
-            indexAxis: 'y',
-            responsive: true,
-            maintainAspectRatio: true,
-            animation: false,
-            plugins: {
-                legend: { display: false }
-            },
-            scales: {
-                x: {
-                    grid: { color: colors.gridColor },
-                    ticks: { color: colors.textColor }
-                },
-                y: {
-                    grid: { display: false },
-                    ticks: { color: colors.textColor }
-                }
-            }
-        }
-    });
+    // // Gráfico de Top Variantes (Horizontal Bar)
+    // geneticCharts.topVariants = new Chart(document.getElementById('topVariantsChart'), {
+    //     type: 'bar',
+    //     data: {
+    //         labels: [],
+    //         datasets: [{
+    //             label: 'Frecuencia de Variantes',
+    //             data: [],
+    //             backgroundColor: [colors.amber, colors.cyan, colors.pink, colors.red, colors.green],
+    //             borderRadius: 8,
+    //             borderWidth: 0
+    //         }]
+    //     },
+    //     options: {
+    //         indexAxis: 'y',
+    //         responsive: true,
+    //         maintainAspectRatio: true,
+    //         animation: false,
+    //         plugins: {
+    //             legend: { display: false }
+    //         },
+    //         scales: {
+    //             x: {
+    //                 grid: { color: colors.gridColor },
+    //                 ticks: { color: colors.textColor }
+    //             },
+    //             y: {
+    //                 grid: { display: false },
+    //                 ticks: { color: colors.textColor }
+    //             }
+    //         }
+    //     }
+    // });
 
     // NEW: Gráfico de Ventanas de Tiempo (Line multi-window)
     geneticCharts.timeWindows = new Chart(document.getElementById('timeWindowsChart'), {
