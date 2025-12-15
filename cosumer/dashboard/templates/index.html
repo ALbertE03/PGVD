@@ -692,7 +692,7 @@
         </div> -->
 
         <!-- Genetic Orientation & Diversity -->
-        <div class="chart-container" style="margin-bottom: 20px;">
+        <!-- <div class="chart-container" style="margin-bottom: 20px;">
             <div class="chart-title">Orientación Genética & Diversidad</div>
             <div class="chart-body" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px;">
                 <div style="background: #0f1419; padding: 20px; border-radius: 8px; border-left: 3px solid #10b981;">
@@ -708,13 +708,13 @@
                     <div style="color: #06b6d4; font-size: 1.8em; font-weight: 700;" id="geneticDiversityIndicator">0%</div>
                 </div>
             </div>
-        </div>
+        </div> -->
 
         <!-- Genetic Orientation & Diversity -->
-        <!-- <div class="chart-container" style="margin-bottom: 20px;">
+        <div class="chart-container" style="margin-bottom: 20px;">
             <div class="chart-title">
                 Orientación Genética & Diversidad
-                <select id="populationGroupSelector"
+                <select id="populationGroupSelector2"
                         style="margin-left:10px;background:#0f1419;color:white;
                             border:1px solid #6b7280;border-radius:6px;padding:4px;">
                     <option value="fathers">Fathers</option>
@@ -737,7 +737,7 @@
                     <div style="color: #06b6d4; font-size: 1.8em; font-weight: 700;" id="geneticDiversityIndicator">0%</div>
                 </div>
             </div>
-        </div> -->
+        </div>
 
 
 
@@ -778,7 +778,7 @@
 
         
         <!-- NEW: Genética Individual -->
-        <div class="chart-container" style="margin-bottom: 20px;">
+        <!-- <div class="chart-container" style="margin-bottom: 20px;">
             <div class="chart-title">
                 🧬 Perfil Genético Individual
                 <select id="individualSelector"
@@ -789,7 +789,7 @@
             <div class="chart-body">
                 <canvas id="individualGeneticsChart"></canvas>
             </div>
-        </div>
+        </div> -->
 
         <!-- NEW: Genética Poblacional -->
         <div class="charts-grid">
@@ -810,10 +810,17 @@
                 </div>
             </div>
 
-            <div class="chart-container">
-                <div class="chart-title">📊 Diversidad Genética por Grupo</div>
+            <div class="chart-container" style="margin-bottom: 20px;">
+                <div class="chart-title">
+                    🧬 Perfil Genético Individual
+                    <select id="individualSelector"
+                        style="margin-left:10px;background:#0f1419;color:white;
+                            border:1px solid #6b7280;border-radius:6px;padding:4px;">
+                        <option value="">Seleccionar individuo</option>
+                    </select>
+                </div>
                 <div class="chart-body">
-                    <canvas id="populationDiversityChart"></canvas>
+                    <canvas id="individualGeneticsChart"></canvas>
                 </div>
             </div>
         </div>

@@ -1656,30 +1656,30 @@ function initializeGeneticsCharts() {
         }
     });
 
-    // 📊 DIVERSIDAD GENÉTICA
-    const ctxDiversity = document
-        .getElementById('populationDiversityChart')
-        .getContext('2d');
+    // // 📊 DIVERSIDAD GENÉTICA
+    // const ctxDiversity = document
+    //     .getElementById('populationDiversityChart')
+    //     .getContext('2d');
 
-    populationDiversityChart = new Chart(ctxDiversity, {
-        type: 'line',
-        data: {
-            labels: [],
-            datasets: [{
-                label: 'Genetic Diversity (He)',
-                data: []
-            }]
-        },
-        options: {
-            responsive: true,
-            scales: {
-                y: {
-                    min: 0,
-                    max: 1
-                }
-            }
-        }
-    });
+    // populationDiversityChart = new Chart(ctxDiversity, {
+    //     type: 'line',
+    //     data: {
+    //         labels: [],
+    //         datasets: [{
+    //             label: 'Genetic Diversity (He)',
+    //             data: []
+    //         }]
+    //     },
+    //     options: {
+    //         responsive: true,
+    //         scales: {
+    //             y: {
+    //                 min: 0,
+    //                 max: 1
+    //             }
+    //         }
+    //     }
+    // });
 }
 
 function populateIndividualSelector(data) {
@@ -1760,52 +1760,52 @@ async function updatePopulationGeneticsChart() {
     }
 }
 
-// async function updateGeneticIndicators() {
-//     try {
-//         const res = await fetch('/api/genetics/population');
-//         const data = await res.json();
-
-//         const group = document.getElementById('populationGroupSelector').value;
-
-//         if (!data[group] || !data[group].percentages) return;
-
-//         const pct = data[group].percentages;
-
-//         // Actualiza los indicadores
-//         document.getElementById('genotypeHomoPercent').textContent = (pct.Homozygous || 0) + '%';
-//         document.getElementById('genotypeHeteroPercent').textContent = (pct.Heterozygous || 0) + '%';
-//         document.getElementById('geneticDiversityIndicator').textContent = ((pct.Diversity || 0) * 100).toFixed(1) + '%';
-
-//     } catch (err) {
-//         console.error('Error updating genetic indicators:', err);
-//     }
-// }
-
-async function updatePopulationDiversityChart() {
+async function updateGeneticDiversity() {
     try {
-        const res = await fetch('/api/genetics/diversity');
+        const res = await fetch('/api/genetics/population');
         const data = await res.json();
 
-        console.log('📊 Datos diversidad genética:', data);
+        const group = document.getElementById('populationGroupSelector2')?.value || 'fathers';
 
-        const group =
-            document.getElementById('populationGroupSelector')?.value || 'fathers';
+        if (!data[group] || !data[group].percentages) return;
 
-        if (!data[group] || data[group].length === 0) return;
+        const pct = data[group].percentages;
 
-        populationDiversityChart.data.labels = data[group].map(
-            d => new Date(d.timestamp).toLocaleTimeString()
-        );
+        // Actualiza los indicadores
+        document.getElementById('genotypeHomoPercent').textContent = (pct.Homozygous || 0) + '%';
+        document.getElementById('genotypeHeteroPercent').textContent = (pct.Heterozygous || 0) + '%';
+        document.getElementById('geneticDiversityIndicator').textContent = ((pct.Diversity || 0) * 100).toFixed(1) + '%';
 
-        populationDiversityChart.data.datasets[0].data = data[group].map(
-            d => d.He
-        );
-
-        populationDiversityChart.update();
     } catch (err) {
-        console.error('Error updating diversity chart:', err);
+        console.error('Error updating genetic indicators:', err);
     }
 }
+
+// async function updatePopulationDiversityChart() {
+//     try {
+//         const res = await fetch('/api/genetics/diversity');
+//         const data = await res.json();
+
+//         console.log('📊 Datos diversidad genética:', data);
+
+//         const group =
+//             document.getElementById('populationGroupSelector')?.value || 'fathers';
+
+//         if (!data[group] || data[group].length === 0) return;
+
+//         populationDiversityChart.data.labels = data[group].map(
+//             d => new Date(d.timestamp).toLocaleTimeString()
+//         );
+
+//         populationDiversityChart.data.datasets[0].data = data[group].map(
+//             d => d.He
+//         );
+
+//         populationDiversityChart.update();
+//     } catch (err) {
+//         console.error('Error updating diversity chart:', err);
+//     }
+// }
 
 
 
@@ -1826,17 +1826,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
             updatePopulationGeneticsChart();
             updatePopulationDiversityChart();
-            //updateGeneticIndicators();
     });
 
-    console.log(individualGeneticsChart, populationGeneticsChart, populationDiversityChart);
+    document.getElementById('populationGroupSelector2')
+            .addEventListener('change', () => {
+                updateGeneticDiversity();
+    });
 
     updateDashboard();
     updateGeneticMetrics();
     updateGeneticOrientationMetrics();
     
     // Primera carga
-    //updateGeneticIndicators();
+    updateGeneticDiversity();
     updateIndividualGeneticsChart();
     updatePopulationGeneticsChart();
     updatePopulationDiversityChart();
@@ -1850,7 +1852,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     
     // Refrescar cada 5 segundos
-    //setInterval(updateGeneticIndicators, 5000);
+    setInterval(updateGeneticDiversity, 5000);
     setInterval(updateIndividualGeneticsChart, 5000);
     setInterval(updatePopulationGeneticsChart, 5000);
     setInterval(updatePopulationDiversityChart, 5000);
