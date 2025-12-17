@@ -398,6 +398,60 @@
             border-radius: 8px 8px 0 0;
         }
 
+        .filter-btn {
+            padding: 8px 16px;
+            background: var(--card-bg);
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            color: var(--text-primary);
+            font-size: 0.875em;
+            margin-right: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .filter-btn:hover {
+            background: var(--accent-blue);
+            border-color: var(--accent-blue);
+            color: white;
+            box-shadow: 0 0 15px var(--accent-blue-glow);
+        }
+
+        .filter-btn.active {
+            background: var(--accent-blue);
+            border-color: var(--accent-blue);
+            color: white;
+            box-shadow: 0 0 20px var(--accent-blue-glow);
+        }
+
+        .family-btn {
+            padding: 8px 16px;
+            background: var(--card-bg);
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            color: var(--text-primary);
+            font-size: 0.875em;
+            transition: all 0.3s ease;
+        }
+
+        .family-btn:hover {
+            background: var(--accent-purple);
+            border-color: var(--accent-purple);
+            color: white;
+            box-shadow: 0 0 15px var(--accent-purple-glow);
+            transform: translateY(-2px);
+        }
+
+        .family-btn.active {
+            background: var(--accent-purple);
+            border-color: var(--accent-purple);
+            color: white;
+            box-shadow: 0 0 20px var(--accent-purple-glow);
+        }
+
         .nav-btn.active {
             color: var(--accent-blue);
             border-bottom-color: var(--accent-blue);
@@ -444,6 +498,34 @@
 
         <!-- View: Cluster Metrics -->
         <div id="cluster-view">
+
+    <!-- Stats Overview -->
+    <div class="stats-overview">
+        <div class="stat-card fathers-card">
+            <div class="stat-label">Fathers</div>
+            <div class="stat-value" id="fathers-count">0</div>
+        </div>
+        <div class="stat-card mothers-card">
+            <div class="stat-label">Mothers</div>
+            <div class="stat-value" id="mothers-count">0</div>
+        </div>
+        <div class="stat-card children-card">
+            <div class="stat-label">Children</div>
+            <div class="stat-value" id="children-count">0</div>
+        </div>
+        <div class="stat-card total-card">
+            <div class="stat-label">Total Records</div>
+            <div class="stat-value" id="total-count">0</div>
+        </div>
+    </div>
+
+    <!-- Processing Rate Chart -->
+    <div class="chart-container" style="margin-bottom: 20px;">
+        <div class="chart-title">Processing Rate - Last 50 Batches</div>
+        <div class="chart-body">
+            <canvas id="processingChart"></canvas>
+        </div>
+    </div>
 
     <!-- Cluster Health Section -->
     <div class="chart-container" style="margin-bottom: 20px;">
@@ -629,35 +711,104 @@
     <!-- View: Data Analysis -->
     <div id="analysis-view" style="display:none;">
 
-        <!-- Stats Overview -->
-        <div class="stats-overview">
-            <div class="stat-card fathers-card">
-                <div class="stat-label">👨 Fathers</div>
-                <div class="stat-value" id="fathers-count">0</div>
-                
+    <!-- Family Filter Section -->
+    <div class="chart-container" style="margin-bottom: 20px;">
+        <div class="chart-title">Family Selector</div>
+        <div class="chart-body">
+            <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+                <label style="color: #e2e8f0; font-weight: 600;">Select Families:</label>
+                <button onclick="toggleFamily('all')" class="family-btn active" data-family="all">All Families</button>
+                <div id="family-buttons" style="display: flex; gap: 8px; flex-wrap: wrap;"></div>
             </div>
-            <div class="stat-card mothers-card">
-                <div class="stat-label">👩 Mothers</div>
-                <div class="stat-value" id="mothers-count">0</div>
-               
+            <div style="margin-top: 15px; color: #94a3b8; font-size: 0.9em;">
+                <span id="selected-families-info">Showing: All families</span>
             </div>
-            <div class="stat-card children-card">
-                <div class="stat-label">👶 Children</div>
-                <div class="stat-value" id="children-count">0</div>
-              
-            </div>
-            <div class="stat-card total-card">
-                <div class="stat-label">📊 Total Records</div>
-                <div class="stat-value" id="total-count">0</div>
+        </div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px;">
+        <!-- Chromosome Distribution -->
+        <div class="chart-container">
+            <div class="chart-title">Chromosome Distribution</div>
+            <div class="chart-body">
+                <div style="margin-bottom: 15px;">
+                    <button onclick="setChromType('all')" class="filter-btn active">All</button>
+                    <button onclick="setChromType('fathers')" class="filter-btn">Fathers</button>
+                    <button onclick="setChromType('mothers')" class="filter-btn">Mothers</button>
+                    <button onclick="setChromType('children')" class="filter-btn">Children</button>
+                </div>
+                <canvas id="chromosomeChart" style="height: 350px;"></canvas>
             </div>
         </div>
 
-    <div class="charts-grid">
+        <!-- Mutation Rate -->
         <div class="chart-container">
-            <div class="chart-title">Processing Rate - Last 50 Batches</div>
+            <div class="chart-title">Mutation Rate Over Time</div>
             <div class="chart-body">
-                <canvas id="processingChart"></canvas>
+                <canvas id="mutationChart" style="height: 350px;"></canvas>
             </div>
+        </div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px;">
+        <!-- Population Heterozygosity -->
+        <div class="chart-container">
+            <div class="chart-title">Population Heterozygosity</div>
+            <div class="chart-body">
+                <canvas id="heteroPopChart" style="height: 300px;"></canvas>
+            </div>
+        </div>
+
+        <!-- Genotype Distribution -->
+        <div class="chart-container">
+            <div class="chart-title">Genotype Distribution</div>
+            <div class="chart-body">
+                <div style="margin-bottom: 15px;">
+                    <button onclick="setGenoType('all')" class="filter-btn active">All</button>
+                    <button onclick="setGenoType('fathers')" class="filter-btn">Fathers</button>
+                    <button onclick="setGenoType('mothers')" class="filter-btn">Mothers</button>
+                    <button onclick="setGenoType('children')" class="filter-btn">Children</button>
+                </div>
+                <canvas id="genotypeChart" style="height: 300px;"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px;">
+        <!-- Genomic Hotspots -->
+        <div class="chart-container">
+            <div class="chart-title">Top Genomic Hotspots</div>
+            <div class="chart-body">
+                <div style="margin-bottom: 15px;">
+                    <button onclick="setHotspotType('all')" class="filter-btn active">All</button>
+                    <button onclick="setHotspotType('fathers')" class="filter-btn">Fathers</button>
+                    <button onclick="setHotspotType('mothers')" class="filter-btn">Mothers</button>
+                    <button onclick="setHotspotType('children')" class="filter-btn">Children</button>
+                </div>
+                <canvas id="hotspotsChart" style="height: 350px;"></canvas>
+            </div>
+        </div>
+
+        <!-- Gene Detection -->
+        <div class="chart-container">
+            <div class="chart-title">Detected Genes (Last 30 SNPs)</div>
+            <div class="chart-body">
+                <canvas id="geneChart" style="height: 350px;"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Genetic Interaction Network (Full Width) -->
+    <div class="chart-container" style="margin-bottom: 20px;">
+        <div class="chart-title">Genetic Interaction Network</div>
+        <div class="chart-body">
+            <div style="margin-bottom: 15px;">
+                <button onclick="setNetworkType('all')" class="filter-btn active">All</button>
+                <button onclick="setNetworkType('fathers')" class="filter-btn">Fathers</button>
+                <button onclick="setNetworkType('mothers')" class="filter-btn">Mothers</button>
+                <button onclick="setNetworkType('children')" class="filter-btn">Children</button>
+            </div>
+            <canvas id="networkChart" style="height: 450px;"></canvas>
         </div>
     </div>
 

@@ -20,7 +20,44 @@ metrics_data = {
     'batches_processed': 0,
     'processing_history': deque(maxlen=50),
     'task_completion_times': [],  # Lista ilimitada de tiempos de completado de tareas
-    'families_completed': 0  # Contador de familias completadas
+    'families_completed': 0,  # Contador de familias completadas
+    # Análisis genéticos
+    'genetic_data': {
+        'fathers': deque(maxlen=30),
+        'mothers': deque(maxlen=30),
+        'children': deque(maxlen=30)
+    },
+    'chromosome_distribution': {
+        'fathers': {},
+        'mothers': {},
+        'children': {}
+    },
+    'heterozygosity_individual': {
+        'fathers': [],
+        'mothers': [],
+        'children': []
+    },
+    'heterozygosity_population': {
+        'fathers': {},
+        'mothers': {},
+        'children': {}
+    },
+    'hotspots': {
+        'fathers': [],
+        'mothers': [],
+        'children': []
+    },
+    'genotype_trends': {
+        'fathers': {},
+        'mothers': {},
+        'children': {}
+    },
+    'mutation_rate': {
+        'fathers': deque(maxlen=30),
+        'mothers': deque(maxlen=30),
+        'children': deque(maxlen=30),
+        'timestamps': deque(maxlen=30)
+    }
 }
 
 
@@ -576,25 +613,92 @@ def receive_metrics():
     try:
         data = request.get_json()
         member_type = data.get('member_type')
+        message_type = data.get('message_type')
         
         # Detectar token de finalización de familia
-        if data.get('message_type') == 'FAMILY_COMPLETE':
+        if message_type == 'FAMILY_COMPLETE':
             with metrics_lock:
                 metrics_data['families_completed'] += 1
                 metrics_data['last_update'] = datetime.now()
             print(f"✅ Familia completada: {data.get('family_id')} - Total: {metrics_data['families_completed']}")
             return jsonify({'status': 'success', 'family_completed': True})
         
+        # Procesar datos genéticos
+        if message_type == 'CHROMOSOME_DISTRIBUTION':
+            with metrics_lock:
+                metrics_data['chromosome_distribution'][member_type] = data.get('chromosome_distribution', {})
+                metrics_data['last_update'] = datetime.now()
+            return jsonify({'status': 'success'})
+        
+        if message_type == 'GENETIC_INDIVIDUAL':
+            with metrics_lock:
+                metrics_data['heterozygosity_individual'][member_type].append({
+                    'person_id': data.get('person_id'),
+                    'heterozygous_pct': data.get('heterozygous_pct'),
+                    'homozygous_pct': data.get('homozygous_pct'),
+                    'total_snps': data.get('total_snps'),
+                    'timestamp': data.get('timestamp')
+                })
+                # Mantener solo los últimos 100
+                if len(metrics_data['heterozygosity_individual'][member_type]) > 100:
+                    metrics_data['heterozygosity_individual'][member_type] = metrics_data['heterozygosity_individual'][member_type][-100:]
+                metrics_data['last_update'] = datetime.now()
+            return jsonify({'status': 'success'})
+        
+        if message_type == 'GENETIC_POPULATION':
+            with metrics_lock:
+                metrics_data['heterozygosity_population'][member_type] = {
+                    'heterozygous_pct': data.get('heterozygous_pct'),
+                    'homozygous_pct': data.get('homozygous_pct'),
+                    'diversity': data.get('diversity'),
+                    'total_snps': data.get('total_snps'),
+                    'timestamp': data.get('timestamp')
+                }
+                metrics_data['last_update'] = datetime.now()
+            return jsonify({'status': 'success'})
+        
+        if message_type == 'POSITION_HOTSPOTS':
+            with metrics_lock:
+                metrics_data['hotspots'][member_type] = data.get('hotspots', [])
+                metrics_data['last_update'] = datetime.now()
+            return jsonify({'status': 'success'})
+        
+        if message_type == 'GENOTYPE_TRENDS':
+            with metrics_lock:
+                metrics_data['genotype_trends'][member_type] = {
+                    'distribution': data.get('genotype_distribution', {}),
+                    'percentages': data.get('genotype_percentages', {}),
+                    'total': data.get('total_genotypes', 0),
+                    'timestamp': data.get('timestamp')
+                }
+                metrics_data['last_update'] = datetime.now()
+            return jsonify({'status': 'success'})
+        
+        if message_type == 'MUTATION_RATE':
+            with metrics_lock:
+                metrics_data['mutation_rate'][member_type].append(data.get('mutation_rate', 0))
+                # Agregar timestamp solo una vez (se comparte entre todos los tipos)
+                if len(metrics_data['mutation_rate']['timestamps']) < len(metrics_data['mutation_rate'][member_type]):
+                    metrics_data['mutation_rate']['timestamps'].append(data.get('timestamp', datetime.now().isoformat()))
+                metrics_data['last_update'] = datetime.now()
+            return jsonify({'status': 'success'})
+        
+        # Métricas normales de batch
         with metrics_lock:
             if member_type in metrics_data:
                 # Actualizar conteo de registros
                 metrics_data[member_type]['total_records'] += data.get('total_records', 0)
                 
+                # Almacenar datos genéticos si existen
+                genetic_data = data.get('genetic_data')
+                if genetic_data:
+                    metrics_data['genetic_data'][member_type].append(genetic_data)
+                
                 # Actualizar metadata general
                 metrics_data['batches_processed'] += 1
                 metrics_data['last_update'] = datetime.now()
                 
-                # Agregar al historial
+                # Agregar al historial de procesamiento
                 metrics_data['processing_history'].append({
                     'timestamp': datetime.now().isoformat(),
                     'member_type': member_type,
@@ -616,6 +720,29 @@ def receive_metrics():
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
+
+@app.route('/api/genetic_analysis')
+def genetic_analysis():
+    """API para obtener datos de análisis genéticos"""
+    with metrics_lock:
+        return jsonify({
+            'genetic_data': {
+                'fathers': list(metrics_data['genetic_data']['fathers']),
+                'mothers': list(metrics_data['genetic_data']['mothers']),
+                'children': list(metrics_data['genetic_data']['children'])
+            },
+            'chromosome_distribution': metrics_data['chromosome_distribution'],
+            'heterozygosity_individual': metrics_data['heterozygosity_individual'],
+            'heterozygosity_population': metrics_data['heterozygosity_population'],
+            'hotspots': metrics_data['hotspots'],
+            'genotype_trends': metrics_data['genotype_trends'],
+            'mutation_rate': {
+                'fathers': list(metrics_data['mutation_rate']['fathers']),
+                'mothers': list(metrics_data['mutation_rate']['mothers']),
+                'children': list(metrics_data['mutation_rate']['children']),
+                'timestamps': list(metrics_data['mutation_rate']['timestamps'])
+            }
+        })
 
 @app.route('/api/spark_jobs')
 def spark_jobs():
