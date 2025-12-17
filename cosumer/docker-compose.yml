@@ -143,7 +143,7 @@ services:
     user: root
     environment:
       - SPARK_NO_DAEMONIZE=true
-      - SPARK_WORKER_MEMORY=3G
+      - SPARK_WORKER_MEMORY=2G
       - SPARK_WORKER_CORES=2
       - SPARK_WORKER_WEBUI_PORT=8081
       - ZOOKEEPER_URL=zookeeper:2181
@@ -168,7 +168,7 @@ services:
     user: root
     environment:
       - SPARK_NO_DAEMONIZE=true
-      - SPARK_WORKER_MEMORY=3G
+      - SPARK_WORKER_MEMORY=2G
       - SPARK_WORKER_CORES=2
       - SPARK_WORKER_WEBUI_PORT=8082
       - ZOOKEEPER_URL=zookeeper:2181

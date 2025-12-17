@@ -43,9 +43,9 @@ def create_spark_session():
 
     spark = SparkSession.builder \
         .appName("GenomicDataConsumer") \
-        .config("spark.driver.memory", "2g") \
-        .config("spark.executor.memory", "3g") \
-        .config("spark.memory.fraction", "0.8") \
+        .config("spark.driver.memory", "1g") \
+        .config("spark.executor.memory", "2g") \
+        .config("spark.memory.fraction", "0.6") \
         .config("spark.memory.storageFraction", "0.3") \
         .config("spark.streaming.stopGracefullyOnShutdown", "true") \
         .config("spark.sql.streaming.schemaInference", "true") \
@@ -627,42 +627,6 @@ def calculate_genotype_trends(df, member_type):
         print(f"❌ Error calculando tendencias de genotipos: {e}")
 
 
-def calculate_mutation_rate(df, member_type):
-    """Calcula la tasa de mutación (porcentaje de variantes vs genoma de referencia)"""
-    try:
-        # Contar variantes (genotype != "0/0")
-        total_snps = df.filter(col("snp_data").isNotNull()).count()
-        variant_snps = df.filter(
-            (col("snp_data").isNotNull()) & 
-            (col("snp_data.genotype") != "0/0")
-        ).count()
-        
-        # Calcular porcentaje de mutación
-        mutation_rate = round((variant_snps / total_snps * 100), 2) if total_snps > 0 else 0
-        
-        mutation_data = {
-            'message_type': 'MUTATION_RATE',
-            'member_type': member_type,
-            'mutation_rate': mutation_rate,
-            'total_snps': total_snps,
-            'variant_snps': variant_snps,
-            'timestamp': str(current_timestamp())
-        }
-        
-        try:
-            response = requests.post(
-                f"{DASHBOARD_URL}/api/metrics",
-                json=mutation_data,
-                timeout=5
-            )
-            if response.status_code == 200:
-                print(f"🧬 [{member_type}] Tasa de mutación: {mutation_rate}% ({variant_snps}/{total_snps})")
-        except Exception as e:
-            print(f"⚠️  Error enviando tasa de mutación: {e}")
-    
-    except Exception as e:
-        print(f"❌ Error calculando tasa de mutación: {e}")
-
 def write_to_hdfs(df, path_name):
     """Escribe el stream a HDFS en formato Parquet"""
     hdfs_path = f"{HDFS_NAMENODE}/genomic_data/{path_name}"
@@ -681,40 +645,42 @@ def write_to_hdfs(df, path_name):
 
 
 def process_batch_with_genetics(batch_df, batch_id, member_type):
-    """Función para procesar batches con análisis genéticos en paralelo
+    """Función para procesar batches con análisis genéticos de forma secuencial
     """
-    from concurrent.futures import ThreadPoolExecutor
-    
     # Métricas por batch (esto se ejecuta primero siempre)
     calculate_and_send_metrics(batch_df, batch_id, member_type)
     
-    # Ejecutar análisis genéticos en paralelo usando threads
-    with ThreadPoolExecutor(max_workers=6) as executor:
-        # Cache del DataFrame para evitar re-cómputos
-        cached_df = batch_df.cache()
-        
-        # Lista de funciones de análisis a ejecutar
-        analysis_functions = [
-            calculate_chromosome_distribution,
-            calculate_position_hotspots,
-            calculate_genotype_trends,
-            calculate_population_heterozygosity,
-            calculate_individual_heterozygosity,
-            calculate_mutation_rate
-        ]
-        
-        # Enviar todas las tareas de análisis en paralelo
-        futures = [executor.submit(func, cached_df, member_type) for func in analysis_functions]
-        
-        # Esperar a que terminen todas (esto permite que se ejecuten en paralelo)
-        for future in futures:
-            try:
-                future.result()
-            except Exception as e:
-                print(f"⚠️ Error en análisis paralelo [{member_type}]: {e}")
-        
-        # Liberar cache
-        cached_df.unpersist()
+    # Cache del DataFrame para evitar re-cómputos
+    cached_df = batch_df.cache()
+    
+    # Ejecutar análisis genéticos de forma secuencial (menos memoria)
+    try:
+        calculate_chromosome_distribution(cached_df, member_type)
+    except Exception as e:
+        print(f"⚠️ Error en chromosome_distribution [{member_type}]: {e}")
+    
+    try:
+        calculate_position_hotspots(cached_df, member_type)
+    except Exception as e:
+        print(f"⚠️ Error en position_hotspots [{member_type}]: {e}")
+    
+    try:
+        calculate_genotype_trends(cached_df, member_type)
+    except Exception as e:
+        print(f"⚠️ Error en genotype_trends [{member_type}]: {e}")
+    
+    try:
+        calculate_population_heterozygosity(cached_df, member_type)
+    except Exception as e:
+        print(f"⚠️ Error en population_heterozygosity [{member_type}]: {e}")
+    
+    try:
+        calculate_individual_heterozygosity(cached_df, member_type)
+    except Exception as e:
+        print(f"⚠️ Error en individual_heterozygosity [{member_type}]: {e}")
+    
+    # Liberar cache
+    cached_df.unpersist()
 
 
 def main():

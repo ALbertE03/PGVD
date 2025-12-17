@@ -52,12 +52,16 @@ metrics_data = {
         'mothers': {},
         'children': {}
     },
-    'mutation_rate': {
-        'fathers': deque(maxlen=30),
-        'mothers': deque(maxlen=30),
-        'children': deque(maxlen=30),
-        'timestamps': deque(maxlen=30)
-    }
+    # Métricas avanzadas de streaming genético (como en main)
+    'genetic_metrics': {
+        'time_window': deque(maxlen=300),  # Últimas 300 muestras (5 min a 1 muestra/seg)
+        'variant_types': {},  # Tipo de variante -> contador
+        'gene_frequency': {},  # Gen -> frecuencia
+        'genotype_distribution': {'dominant': 0, 'recessive': 0, 'heterozygous': 0},
+        'mutation_rate_window': deque(maxlen=60),  # Tasa de mutación por ventana
+        'anomaly_count': 0  # Conteo de anomalías detectadas
+    },
+    'family_ids': set()  # Conjunto de IDs de familias procesadas
 }
 
 
@@ -618,9 +622,12 @@ def receive_metrics():
         # Detectar token de finalización de familia
         if message_type == 'FAMILY_COMPLETE':
             with metrics_lock:
+                family_id = data.get('family_id')
+                if family_id:
+                    metrics_data['family_ids'].add(family_id)
                 metrics_data['families_completed'] += 1
                 metrics_data['last_update'] = datetime.now()
-            print(f"✅ Familia completada: {data.get('family_id')} - Total: {metrics_data['families_completed']}")
+            print(f"✅ Familia completada: {family_id} - Total: {metrics_data['families_completed']}")
             return jsonify({'status': 'success', 'family_completed': True})
         
         # Procesar datos genéticos
@@ -671,15 +678,22 @@ def receive_metrics():
                     'total': data.get('total_genotypes', 0),
                     'timestamp': data.get('timestamp')
                 }
-                metrics_data['last_update'] = datetime.now()
-            return jsonify({'status': 'success'})
-        
-        if message_type == 'MUTATION_RATE':
-            with metrics_lock:
-                metrics_data['mutation_rate'][member_type].append(data.get('mutation_rate', 0))
-                # Agregar timestamp solo una vez (se comparte entre todos los tipos)
-                if len(metrics_data['mutation_rate']['timestamps']) < len(metrics_data['mutation_rate'][member_type]):
-                    metrics_data['mutation_rate']['timestamps'].append(data.get('timestamp', datetime.now().isoformat()))
+                
+                # Actualizar genotype_distribution global
+                for genotype, count in data.get('genotype_distribution', {}).items():
+                    # Clasificar genotipos (simplificado)
+                    if genotype and len(genotype) >= 3:  # Formato "X/Y"
+                        alleles = genotype.split('/')
+                        if len(alleles) == 2:
+                            a, b = alleles[0], alleles[1]
+                            if a == b:
+                                if a.isupper():
+                                    metrics_data['genetic_metrics']['genotype_distribution']['dominant'] += count
+                                else:
+                                    metrics_data['genetic_metrics']['genotype_distribution']['recessive'] += count
+                            else:
+                                metrics_data['genetic_metrics']['genotype_distribution']['heterozygous'] += count
+                
                 metrics_data['last_update'] = datetime.now()
             return jsonify({'status': 'success'})
         
@@ -693,6 +707,27 @@ def receive_metrics():
                 genetic_data = data.get('genetic_data')
                 if genetic_data:
                     metrics_data['genetic_data'][member_type].append(genetic_data)
+                    
+                    # Actualizar genetic_metrics (como en main)
+                    # Agregar timestamp a la ventana de tiempo
+                    metrics_data['genetic_metrics']['time_window'].append(datetime.now().timestamp())
+                    
+                    # Actualizar contadores
+                    variant_type = genetic_data.get('variant_type', 'SNP')
+                    metrics_data['genetic_metrics']['variant_types'][variant_type] = \
+                        metrics_data['genetic_metrics']['variant_types'].get(variant_type, 0) + 1
+                    
+                    gene = genetic_data.get('gene')
+                    if gene and gene != 'Unknown' and not gene.startswith('Chr'):
+                        metrics_data['genetic_metrics']['gene_frequency'][gene] = \
+                            metrics_data['genetic_metrics']['gene_frequency'].get(gene, 0) + 1
+                    
+                    # Calcular y guardar tasa de mutación actual (variantes por segundo en ventana de 60s)
+                    current_time = datetime.now().timestamp()
+                    recent_variants = sum(1 for ts in metrics_data['genetic_metrics']['time_window'] 
+                                         if current_time - ts < 60)
+                    mutation_rate = recent_variants / 60.0  # variantes por segundo
+                    metrics_data['genetic_metrics']['mutation_rate_window'].append(mutation_rate)
                 
                 # Actualizar metadata general
                 metrics_data['batches_processed'] += 1
@@ -736,12 +771,26 @@ def genetic_analysis():
             'heterozygosity_population': metrics_data['heterozygosity_population'],
             'hotspots': metrics_data['hotspots'],
             'genotype_trends': metrics_data['genotype_trends'],
-            'mutation_rate': {
-                'fathers': list(metrics_data['mutation_rate']['fathers']),
-                'mothers': list(metrics_data['mutation_rate']['mothers']),
-                'children': list(metrics_data['mutation_rate']['children']),
-                'timestamps': list(metrics_data['mutation_rate']['timestamps'])
+            'genetic_metrics': {
+                'mutation_rate_history': list(metrics_data['genetic_metrics']['mutation_rate_window']),
+                'variant_types': metrics_data['genetic_metrics']['variant_types'],
+                'gene_frequency': dict(sorted(
+                    metrics_data['genetic_metrics']['gene_frequency'].items(),
+                    key=lambda x: x[1],
+                    reverse=True
+                )[:20]),  # Top 20 genes
+                'genotype_distribution': metrics_data['genetic_metrics']['genotype_distribution']
             }
+        })
+
+@app.route('/api/families')
+def get_families():
+    """API para obtener lista de familias procesadas"""
+    with metrics_lock:
+        families_list = sorted(list(metrics_data['family_ids']))
+        return jsonify({
+            'families': families_list,
+            'total': len(families_list)
         })
 
 @app.route('/api/spark_jobs')

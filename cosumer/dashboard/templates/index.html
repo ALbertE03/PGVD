@@ -711,21 +711,6 @@
     <!-- View: Data Analysis -->
     <div id="analysis-view" style="display:none;">
 
-    <!-- Family Filter Section -->
-    <div class="chart-container" style="margin-bottom: 20px;">
-        <div class="chart-title">Family Selector</div>
-        <div class="chart-body">
-            <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
-                <label style="color: #e2e8f0; font-weight: 600;">Select Families:</label>
-                <button onclick="toggleFamily('all')" class="family-btn active" data-family="all">All Families</button>
-                <div id="family-buttons" style="display: flex; gap: 8px; flex-wrap: wrap;"></div>
-            </div>
-            <div style="margin-top: 15px; color: #94a3b8; font-size: 0.9em;">
-                <span id="selected-families-info">Showing: All families</span>
-            </div>
-        </div>
-    </div>
-
     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px;">
         <!-- Chromosome Distribution -->
         <div class="chart-container">
@@ -775,17 +760,14 @@
     </div>
 
     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px;">
-        <!-- Genomic Hotspots -->
+        <!-- Heredabilidad Genética -->
         <div class="chart-container">
-            <div class="chart-title">Top Genomic Hotspots</div>
+            <div class="chart-title">🧬 Análisis de Heredabilidad (Top 15 Genes)</div>
             <div class="chart-body">
-                <div style="margin-bottom: 15px;">
-                    <button onclick="setHotspotType('all')" class="filter-btn active">All</button>
-                    <button onclick="setHotspotType('fathers')" class="filter-btn">Fathers</button>
-                    <button onclick="setHotspotType('mothers')" class="filter-btn">Mothers</button>
-                    <button onclick="setHotspotType('children')" class="filter-btn">Children</button>
+                <div style="margin-bottom: 10px; font-size: 13px; color: var(--text-secondary);">
+                    Genes heredados de padres → hijos en la misma posición cromosómica
                 </div>
-                <canvas id="hotspotsChart" style="height: 350px;"></canvas>
+                <canvas id="heritabilityChart" style="height: 350px;"></canvas>
             </div>
         </div>
 
@@ -798,16 +780,37 @@
         </div>
     </div>
 
-    <!-- Genetic Interaction Network (Full Width) -->
-    <div class="chart-container" style="margin-bottom: 20px;">
-        <div class="chart-title">Genetic Interaction Network</div>
+    <!-- Variantes Raras -->
+    <div class="chart-container" style="margin-bottom: 24px;">
+        <div class="chart-title">🔬 Variantes Raras (Frecuencia < 1%)</div>
         <div class="chart-body">
-            <div style="margin-bottom: 15px;">
-                <button onclick="setNetworkType('all')" class="filter-btn active">All</button>
-                <button onclick="setNetworkType('fathers')" class="filter-btn">Fathers</button>
-                <button onclick="setNetworkType('mothers')" class="filter-btn">Mothers</button>
-                <button onclick="setNetworkType('children')" class="filter-btn">Children</button>
+            <div style="margin-bottom: 10px; font-size: 13px; color: var(--text-secondary);">
+                Genotipos únicos o extremadamente raros en la población
             </div>
+            <canvas id="rareVariantsChart" style="height: 300px;"></canvas>
+        </div>
+    </div>
+
+    <!-- Risk Score (Full Width) -->
+    <div class="chart-container" style="margin-bottom: 24px;">
+        <div class="chart-title">⚠️ Score de Riesgo Genético por Cohorte</div>
+        <div class="chart-body">
+            <canvas id="riskScoreChart" style="height: 350px;"></canvas>
+        </div>
+    </div>
+
+    <!-- Comparación de Cohortes (Full Width) -->
+    <div class="chart-container" style="margin-bottom: 24px;">
+        <div class="chart-title">👥 Comparación de Cohortes (Fathers vs Mothers vs Children)</div>
+        <div class="chart-body">
+            <canvas id="cohortComparisonChart" style="height: 350px;"></canvas>
+        </div>
+    </div>
+
+    <!-- Genetic Interaction Network (Full Width) -->
+    <div class="chart-container" style="margin-bottom: 24px;">
+        <div class="chart-title">🔗 Red de Interacción Genética (Top 15 Genes × Cromosomas)</div>
+        <div class="chart-body">
             <canvas id="networkChart" style="height: 450px;"></canvas>
         </div>
     </div>
