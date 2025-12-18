@@ -23,9 +23,9 @@ metrics_data = {
     'families_completed': 0,  # Contador de familias completadas
     # Análisis genéticos
     'genetic_data': {
-        'fathers': deque(maxlen=30),
-        'mothers': deque(maxlen=30),
-        'children': deque(maxlen=30)
+        'fathers': deque(maxlen=100),
+        'mothers': deque(maxlen=100),
+        'children': deque(maxlen=100)
     },
     'chromosome_distribution': {
         'fathers': {},
@@ -706,6 +706,8 @@ def receive_metrics():
                 # Almacenar datos genéticos si existen
                 genetic_data = data.get('genetic_data')
                 if genetic_data:
+                    # Add family_id to genetic_data for filtering in frontend
+                    genetic_data['family_id'] = data.get('family_id')
                     metrics_data['genetic_data'][member_type].append(genetic_data)
                     
                     # Actualizar genetic_metrics (como en main)

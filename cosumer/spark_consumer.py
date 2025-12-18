@@ -164,70 +164,71 @@ def extract_genetic_data(snp_data_row, genotype_from_batch):
         def get_variant_type(snp_data):
             return "SNP"
         
-        # Mapeo simplificado de genes por cromosoma y posición
-        def get_gene_name(chromosome, position):
-            # Mapeo más flexible de genes por cromosoma
-            GENE_MAP = {
-                # Gen -> (cromosoma_start, cromosoma_end)
-                "BRCA1": (17, 43000000, 43500000),
-                "BRCA2": (13, 32800000, 33400000),
-                "TP53": (17, 7000000, 7600000),
-                "EGFR": (7, 55000000, 56500000),
-                "KRAS": (12, 25200000, 25400000),
-                "BRAF": (7, 140700000, 140900000),
-                "FMR1": ("X",  153000000, 153500000),
-                "AR":("X", 66700000, 67000000),
-                "DMD": ("X", 48700000, 48800000),
-                "SRY":   ("Y", 2650000, 2800000),
-                "TSPY":  ("Y", 9500000, 10500000),
-                "DAZ":   ("Y", 23500000, 24500000),
-                "RBMY":  ("Y", 22000000, 22500000),
-                "USP9Y": ("Y", 12500000, 13000000),
-                "ZFY":   ("Y", 2850000, 3000000),
-                # Mitocondrial (MT)
-                "MT-ND1":  ("MT", 3307, 4262),
-                "MT-ND2":  ("MT", 4470, 5511),
-                "MT-CO1":  ("MT", 5904, 7445),
-                "MT-CO2":  ("MT", 7586, 8269),
-                "MT-ATP8": ("MT", 8366, 8572),
-                "MT-ATP6": ("MT", 8527, 9207),
-                "MT-CO3":  ("MT", 9207, 9990),
-                "MT-ND3":  ("MT", 10059, 10404),
-                "MT-ND4":  ("MT", 10760, 12137),
-                "MT-ND5":  ("MT", 12337, 14148),
-                "MT-CYB":  ("MT", 14747, 15887),
-                "MT-ND6":  ("MT", 14149, 14673),
-                "MT-RNR1": ("MT", 648, 1601),
-                "MT-RNR2": ("MT", 1671, 3229),
 
-            }
-            
-            try:
-                chrom = normalize_chromosome(chromosome)
-                pos = int(position) if position is not None else None
-
-                if chrom is None or pos is None:
-                    return "Unknown"
-
-                for gene, (c, start, end) in GENE_MAP.items():
-                    if chrom == c and start <= pos <= end:
-                        return gene
-
-                # fallback útil para debug
-                return f"Chr{chrom}"
-            except Exception as e:
-                print(f"  ⚠️ Error en mapeo de genes: {e}")
-                pass
-            
-            return "Unknown"
         
         # Extraer valores de forma segura
         chromosome = snp_dict.get("chromosome", "0")
         position = snp_dict.get("position", 0)
         
+        # Helper interno para obtener nombre
+        def resolve_gene_name(c, p):
+            try:
+                chrom = normalize_chromosome(c)
+                pos = int(p) if p is not None else 0
+
+                if chrom is None: 
+                    return "Unknown"
+
+                # 1. Intentar mapa exacto
+                GENE_MAP = {
+                    "BRCA1": (17, 43000000, 43500000),
+                    "BRCA2": (13, 32800000, 33400000),
+                    "TP53": (17, 7000000, 7600000),
+                    "EGFR": (7, 55000000, 56500000),
+                    "KRAS": (12, 25200000, 25400000),
+                    "BRAF": (7, 140700000, 140900000),
+                    "FMR1": ("X",  153000000, 153500000),
+                    "AR":("X", 66700000, 67000000),
+                    "DMD": ("X", 48700000, 48800000),
+                    "SRY":   ("Y", 2650000, 2800000),
+                    "TSPY":  ("Y", 9500000, 10500000),
+                    "DAZ":   ("Y", 23500000, 24500000),
+                    "RBMY":  ("Y", 22000000, 22500000),
+                    "USP9Y": ("Y", 12500000, 13000000),
+                    "ZFY":   ("Y", 2850000, 3000000),
+                    "MT-ND1":  ("MT", 3307, 4262),
+                    "MT-ND2":  ("MT", 4470, 5511),
+                    "MT-CO1":  ("MT", 5904, 7445),
+                    "MT-CO2":  ("MT", 7586, 8269),
+                    "MT-ATP8": ("MT", 8366, 8572),
+                    "MT-ATP6": ("MT", 8527, 9207),
+                    "MT-CO3":  ("MT", 9207, 9990),
+                    "MT-ND3":  ("MT", 10059, 10404),
+                    "MT-ND4":  ("MT", 10760, 12137),
+                    "MT-ND5":  ("MT", 12337, 14148),
+                    "MT-CYB":  ("MT", 14747, 15887),
+                    "MT-ND6":  ("MT", 14149, 14673),
+                    "MT-RNR1": ("MT", 648, 1601),
+                    "MT-RNR2": ("MT", 1671, 3229),
+                }
+
+                for gene_name, val in GENE_MAP.items():
+                    if len(val) == 3:
+                        gc, start, end = val
+                        if str(gc) == str(chrom) and start <= pos <= end:
+                            return gene_name
+
+                # 2. Generar nombre sintético basado en buckets de posición
+                # Esto asegura que haya datos para graficar incluso si no cae en genes conocidos
+                mb_bucket = pos // 10000000 # Bucket cada 10MB
+                return f"G-{chrom}-{mb_bucket}"
+
+            except Exception:
+                return "Unknown"
+
         genetic_data = {
             "variant_type": get_variant_type(snp_dict),
-            "gene": get_gene_name(chromosome, position),
+            "gene": resolve_gene_name(chromosome, position),
             "genotype": genotype_from_batch if genotype_from_batch else "0/0",
             "chromosome": str(chromosome),
             "position": int(position) if position else 0,

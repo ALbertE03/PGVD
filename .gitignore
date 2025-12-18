@@ -4,6 +4,8 @@ __pycache__/
 *$py.class
 .vscode
 # C extensions
+GUIA_AGREGAR_ANALISIS.md
+ANALYTICS_GUIDE.md
 *.so
 data/
 # CSV files

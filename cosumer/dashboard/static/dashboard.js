@@ -5,6 +5,7 @@ let currentChromType = 'all';
 let currentGenoType = 'all';
 let currentSnpRangeType = 'fathers';
 let currentFamilySizeType = 'fathers';
+let currentFamilyFilter = 'all';
 
 // ========== Funciones Reutilizables ==========
 /**
@@ -26,7 +27,12 @@ function updateBarChart(chart, labels, datasets) {
  * @returns {Array} Datos sin filtrar
  */
 function filterBySelectedFamilies(data) {
-    return data || [];  // Retornar todos los datos sin filtro
+    if (!data) return [];
+    if (currentFamilyFilter && currentFamilyFilter !== 'all') {
+        // Asegurar que family_id sea string para comparación
+        return data.filter(d => String(d.family_id) === String(currentFamilyFilter));
+    }
+    return data;
 }
 
 // Get dark theme colors (fixed palette)
@@ -47,7 +53,7 @@ function getThemeColors() {
 // Initialize all charts
 function initializeCharts() {
     const colors = getThemeColors();
-    
+
     // Processing Rate - Line Chart
     charts.processing = new Chart(document.getElementById('processingChart'), {
         type: 'line',
@@ -84,7 +90,7 @@ function initializeCharts() {
             responsive: true,
             maintainAspectRatio: true,
             scales: {
-                y: { 
+                y: {
                     beginAtZero: true,
                     grid: { color: colors.gridColor },
                     ticks: { color: colors.textColor }
@@ -95,10 +101,10 @@ function initializeCharts() {
                 }
             },
             plugins: {
-                legend: { 
+                legend: {
                     position: 'bottom',
-                    labels: { 
-                        usePointStyle: true, 
+                    labels: {
+                        usePointStyle: true,
                         padding: 20,
                         color: colors.textColor
                     }
@@ -128,7 +134,7 @@ function initializeCharts() {
                 easing: 'easeInOutQuart'
             },
             scales: {
-                y: { 
+                y: {
                     beginAtZero: true,
                     grid: { color: colors.gridColor },
                     ticks: { color: colors.textColor }
@@ -139,7 +145,7 @@ function initializeCharts() {
                 }
             },
             plugins: {
-                legend: { 
+                legend: {
                     display: true,
                     position: 'top',
                     labels: { color: colors.textColor }
@@ -170,7 +176,7 @@ function initializeCharts() {
             maintainAspectRatio: false,
             animation: false,
             scales: {
-                y: { 
+                y: {
                     beginAtZero: true,
                     grid: { color: colors.gridColor },
                     ticks: { color: colors.textColor },
@@ -191,9 +197,9 @@ function initializeCharts() {
                 }
             },
             plugins: {
-                legend: { 
+                legend: {
                     position: 'top',
-                    labels: { 
+                    labels: {
                         color: colors.textColor,
                         padding: 15,
                         usePointStyle: true
@@ -233,7 +239,7 @@ function initializeCharts() {
                 easing: 'easeInOutQuart'
             },
             scales: {
-                y: { 
+                y: {
                     beginAtZero: true,
                     max: 100,
                     grid: { color: colors.gridColor },
@@ -245,9 +251,9 @@ function initializeCharts() {
                 }
             },
             plugins: {
-                legend: { 
+                legend: {
                     position: 'bottom',
-                    labels: { 
+                    labels: {
                         color: colors.textColor,
                         padding: 15
                     }
@@ -272,7 +278,7 @@ function initializeCharts() {
                 easing: 'easeInOutQuart'
             },
             scales: {
-                x: { 
+                x: {
                     beginAtZero: true,
                     grid: { color: colors.gridColor },
                     ticks: { color: colors.textColor },
@@ -288,9 +294,9 @@ function initializeCharts() {
                 }
             },
             plugins: {
-                legend: { 
+                legend: {
                     position: 'top',
-                    labels: { 
+                    labels: {
                         color: colors.textColor,
                         padding: 15,
                         usePointStyle: true
@@ -300,39 +306,7 @@ function initializeCharts() {
         }
     });
 
-    // Heredabilidad Chart
-    charts.heritability = new Chart(document.getElementById('heritabilityChart'), {
-        type: 'bar',
-        data: {
-            labels: [],
-            datasets: []
-        },
-        options: {
-            indexAxis: 'y',
-            responsive: true,
-            maintainAspectRatio: false,
-            animation: false,
-            scales: {
-                x: { 
-                    beginAtZero: true,
-                    grid: { color: colors.gridColor },
-                    ticks: { color: colors.textColor },
-                    title: {
-                        display: true,
-                        text: '% Heredabilidad',
-                        color: colors.textColor
-                    }
-                },
-                y: {
-                    grid: { display: false },
-                    ticks: { color: colors.textColor }
-                }
-            },
-            plugins: {
-                legend: { display: false }
-            }
-        }
-    });
+
 
     // Variantes Raras Chart
     charts.rareVariants = new Chart(document.getElementById('rareVariantsChart'), {
@@ -351,7 +325,7 @@ function initializeCharts() {
             plugins: {
                 legend: {
                     position: 'right',
-                    labels: { 
+                    labels: {
                         color: colors.textColor,
                         padding: 12,
                         font: { size: 11 }
@@ -359,7 +333,7 @@ function initializeCharts() {
                 },
                 tooltip: {
                     callbacks: {
-                        label: function(context) {
+                        label: function (context) {
                             return context.label + ': ' + context.parsed + ' variantes';
                         }
                     }
@@ -405,7 +379,7 @@ function initializeCharts() {
                 easing: 'easeInOutQuart'
             },
             scales: {
-                y: { 
+                y: {
                     beginAtZero: true,
                     grid: { color: colors.gridColor },
                     ticks: { color: colors.textColor }
@@ -416,9 +390,9 @@ function initializeCharts() {
                 }
             },
             plugins: {
-                legend: { 
+                legend: {
                     position: 'bottom',
-                    labels: { 
+                    labels: {
                         color: colors.textColor,
                         padding: 15
                     }
@@ -463,7 +437,7 @@ function initializeCharts() {
                 },
                 tooltip: {
                     callbacks: {
-                        label: function(context) {
+                        label: function (context) {
                             if (context.raw.gene) {
                                 return `${context.raw.gene}: ${context.raw.count} variantes`;
                             }
@@ -494,11 +468,11 @@ function initializeCharts() {
                 }
             },
             scales: {
-                x: { 
+                x: {
                     grid: { color: colors.gridColor },
                     ticks: { color: colors.textSecondary }
                 },
-                y: { 
+                y: {
                     grid: { color: colors.gridColor },
                     ticks: { color: colors.textSecondary },
                     beginAtZero: true,
@@ -559,22 +533,22 @@ function initializeCharts() {
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            scales: { 
-                y: { 
-                    beginAtZero: true, 
-                    max: 100, 
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    max: 100,
                     grid: { color: colors.gridColor },
                     ticks: { color: colors.textColor }
                 },
-                x: { 
+                x: {
                     grid: { display: false },
                     ticks: { color: colors.textColor }
                 }
             },
-            plugins: { 
-                legend: { 
-                    display: false 
-                } 
+            plugins: {
+                legend: {
+                    display: false
+                }
             },
             animation: false
         }
@@ -598,22 +572,22 @@ function initializeCharts() {
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            scales: { 
-                y: { 
-                    beginAtZero: true, 
-                    max: 100, 
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    max: 100,
                     grid: { color: colors.gridColor },
                     ticks: { color: colors.textColor }
                 },
-                x: { 
+                x: {
                     grid: { display: false },
                     ticks: { color: colors.textColor }
                 }
             },
-            plugins: { 
-                legend: { 
-                    display: false 
-                } 
+            plugins: {
+                legend: {
+                    display: false
+                }
             },
             animation: false
         }
@@ -636,7 +610,7 @@ function initializeCharts() {
             maintainAspectRatio: false,
             cutout: '65%',
             plugins: {
-                legend: { 
+                legend: {
                     position: 'bottom',
                     labels: {
                         font: { size: 11 },
@@ -646,7 +620,7 @@ function initializeCharts() {
                 },
                 tooltip: {
                     callbacks: {
-                        label: function(context) {
+                        label: function (context) {
                             return context.label + ': ' + context.raw.toFixed(2) + ' GB';
                         }
                     }
@@ -731,13 +705,13 @@ function initializeCharts() {
             parsing: false, // Deshabilitar parsing automático
             normalized: true, // Los datos ya vienen normalizados
             scales: {
-                y: { 
+                y: {
                     beginAtZero: true,
-                    grid: { 
+                    grid: {
                         color: colors.gridColor,
                         drawTicks: false
                     },
-                    ticks: { 
+                    ticks: {
                         color: colors.textColor,
                         maxTicksLimit: 8
                     },
@@ -750,10 +724,10 @@ function initializeCharts() {
                 },
                 x: {
                     type: 'linear',
-                    grid: { 
+                    grid: {
                         display: false
                     },
-                    ticks: { 
+                    ticks: {
                         color: colors.textColor,
                         maxTicksLimit: 15,
                         autoSkip: true
@@ -767,11 +741,11 @@ function initializeCharts() {
                 }
             },
             plugins: {
-                legend: { 
+                legend: {
                     display: true,
                     position: 'top',
-                    labels: { 
-                        usePointStyle: true, 
+                    labels: {
+                        usePointStyle: true,
                         padding: 20,
                         color: colors.textColor,
                         font: { size: 13, weight: '600' }
@@ -792,26 +766,26 @@ function initializeCharts() {
                     boxHeight: 12,
                     usePointStyle: true,
                     callbacks: {
-                        title: function(context) {
+                        title: function (context) {
                             if (context.length > 0) {
                                 const taskNum = Math.round(context[0].parsed.x) + 1;
                                 return '📊 Tarea #' + taskNum;
                             }
                             return '';
                         },
-                        label: function(context) {
+                        label: function (context) {
                             const label = context.dataset.label || '';
                             const value = context.parsed.y;
-                            
+
                             // Agregar emoji según el tipo
                             let emoji = '•';
                             if (label === 'Fathers') emoji = '👨';
                             else if (label === 'Mothers') emoji = '👩';
                             else if (label === 'Children') emoji = '👶';
-                            
+
                             return emoji + ' ' + label + ': ' + value.toFixed(2) + ' ms';
                         },
-                        afterBody: function(context) {
+                        afterBody: function (context) {
                             // Calcular promedio de los 3 valores mostrados
                             if (context.length === 3) {
                                 const avg = context.reduce((sum, ctx) => sum + ctx.parsed.y, 0) / context.length;
@@ -875,6 +849,9 @@ async function updateDashboard() {
         // Update genetic analysis charts
         updateGeneticCharts();
 
+        // Update family selector
+        updateFamilySelector();
+
         // Update Cluster Stats
         const cluster = await fetch('/api/cluster_stats').then(r => r.json());
         updateClusterCharts(cluster);
@@ -884,7 +861,7 @@ async function updateDashboard() {
         if (cluster.hdfs) {
             updateHdfsMetrics(cluster.hdfs);
         }
-        
+
         // Update Spark Jobs Performance Metrics
         updateSparkJobs();
 
@@ -935,13 +912,50 @@ function setGenoType(type) {
     updateGeneticCharts();
 }
 
+// Family Filter
+function updateFamilyFilter(val) {
+    currentFamilyFilter = val;
+    const display = document.getElementById('family-stats-display');
+    if (display) {
+        display.textContent = val === 'all'
+            ? 'Mostrando datos globales'
+            : `Filtrando por Familia: ${val}`;
+    }
+    updateGeneticCharts();
+}
+
+async function updateFamilySelector() {
+    try {
+        const response = await fetch('/api/families');
+        const data = await response.json();
+        const selector = document.getElementById('familySelect');
+        if (!selector) return;
+
+        const existingOptions = new Set(Array.from(selector.options).map(o => o.value));
+
+        // data.families es una lista de IDs (strings)
+        data.families.forEach(famId => {
+            const val = String(famId);
+            if (!existingOptions.has(val)) {
+                const opt = document.createElement('option');
+                opt.value = val;
+                opt.textContent = `Familia ${val}`;
+                selector.appendChild(opt);
+            }
+        });
+
+    } catch (error) {
+        console.error('Error updating family selector:', error);
+    }
+}
+
 // Update Genetic Charts
 async function updateGeneticCharts() {
     try {
         const response = await fetch('/api/genetic_analysis');
         const data = await response.json();
         const colors = getThemeColors();
-        
+
         // ========== Update Chromosome Distribution ==========
         if (currentChromType === 'all') {
             // Mostrar todos los tipos combinados
@@ -953,13 +967,13 @@ async function updateGeneticCharts() {
                     allChroms[chr][type] = dist[chr]?.total || 0;
                 });
             });
-            
+
             const chromLabels = Object.keys(allChroms).sort((a, b) => {
                 const numA = parseInt(a) || (a === 'X' ? 23 : (a === 'Y' ? 24 : (a === 'MT' ? 25 : 99)));
                 const numB = parseInt(b) || (b === 'X' ? 23 : (b === 'Y' ? 24 : (b === 'MT' ? 25 : 99)));
                 return numA - numB;
             });
-            
+
             // Usar función reutilizable
             updateBarChart(charts.chromosome, chromLabels, [
                 {
@@ -993,7 +1007,7 @@ async function updateGeneticCharts() {
                 return numA - numB;
             });
             const chromData = chromLabels.map(chr => chromDist[chr]?.total || 0);
-            
+
             // Usar función reutilizable
             updateBarChart(charts.chromosome, chromLabels, [{
                 label: 'Variants Count',
@@ -1003,12 +1017,12 @@ async function updateGeneticCharts() {
                 borderWidth: 2
             }]);
         }
-        
+
         // ========== Update Heterozygosity Population ==========
         const heteroFathers = data.heterozygosity_population.fathers || {};
         const heteroMothers = data.heterozygosity_population.mothers || {};
         const heteroChildren = data.heterozygosity_population.children || {};
-        
+
         // Usar función reutilizable
         updateBarChart(charts.heteroPop, ['Fathers', 'Mothers', 'Children'], [
             {
@@ -1034,7 +1048,7 @@ async function updateGeneticCharts() {
                 borderWidth: 2
             }
         ]);
-        
+
         // ========== Update Genotype Trends ==========
         if (currentGenoType === 'all') {
             // Mostrar todos combinados
@@ -1047,7 +1061,7 @@ async function updateGeneticCharts() {
                     allGenotypes[geno][type] = dist[geno] || 0;
                 });
             });
-            
+
             const genoLabels = Object.keys(allGenotypes);
             // Usar función reutilizable
             updateBarChart(charts.genotype, genoLabels, [
@@ -1078,7 +1092,7 @@ async function updateGeneticCharts() {
             const genoTrends = data.genotype_trends[currentGenoType] || {};
             const genoLabels = Object.keys(genoTrends.distribution || {});
             const genoData = Object.values(genoTrends.distribution || {});
-            
+
             // Usar función reutilizable
             updateBarChart(charts.genotype, genoLabels, [{
                 label: 'Count',
@@ -1088,25 +1102,22 @@ async function updateGeneticCharts() {
                 borderWidth: 2
             }]);
         }
-        
-        // ========== Update Heredabilidad ==========
-        updateHeritability(data);
-        
+
         // ========== Update Variantes Raras ==========
         updateRareVariants(data);
-        
+
         // ========== Update Risk Score ==========
         updateRiskScore(data);
-        
+
         // ========== Update Cohort Comparison ==========
         updateCohortComparison(data);
-        
+
         // ========== Update Gene Detection (con filtro de familias) ==========
         // Aplicar filtro de familias
         const genesFathers = filterBySelectedFamilies(data.genetic_data.fathers || []);
         const genesMothers = filterBySelectedFamilies(data.genetic_data.mothers || []);
         const genesChildren = filterBySelectedFamilies(data.genetic_data.children || []);
-        
+
         const geneCounts = {};
         [...genesFathers, ...genesMothers, ...genesChildren].forEach(snp => {
             if (snp && snp.gene && snp.gene !== 'Unknown') {
@@ -1115,7 +1126,7 @@ async function updateGeneticCharts() {
                 }
             }
         });
-        
+
         genesFathers.forEach(snp => {
             if (snp && snp.gene && geneCounts[snp.gene]) geneCounts[snp.gene].fathers++;
         });
@@ -1125,7 +1136,7 @@ async function updateGeneticCharts() {
         genesChildren.forEach(snp => {
             if (snp && snp.gene && geneCounts[snp.gene]) geneCounts[snp.gene].children++;
         });
-        
+
         const geneLabels = Object.keys(geneCounts).slice(0, 15);
         // Usar función reutilizable
         updateBarChart(charts.gene, geneLabels, [
@@ -1151,14 +1162,14 @@ async function updateGeneticCharts() {
                 borderWidth: 2
             }
         ]);
-        
+
         // ========== Update Mutation Rate Chart (usando genetic_metrics) ==========
         const geneticMetrics = data.genetic_metrics || {};
         const mutationHistory = geneticMetrics.mutation_rate_history || [];
-        
+
         // Crear labels numéricos simples
         const timeLabels = mutationHistory.map((_, idx) => idx);
-        
+
         // Un solo dataset con la tasa de mutación (variantes/segundo)
         charts.mutation.data.labels = timeLabels;
         charts.mutation.data.datasets = [{
@@ -1172,10 +1183,10 @@ async function updateGeneticCharts() {
             pointRadius: 2
         }];
         charts.mutation.update('none');  // Sin animación para actualizaciones rápidas
-        
+
         // ========== Update Genetic Interaction Network ==========
         updateGeneticNetwork(data);
-        
+
     } catch (error) {
         console.error('Error updating genetic charts:', error);
     }
@@ -1189,16 +1200,16 @@ function updateClusterCharts(data) {
     }
 
     // Current values text - con validación para evitar NaN
-    const cpuValue = (data.current && data.current.cpu && !isNaN(data.current.cpu.value)) 
-        ? data.current.cpu.value.toFixed(1) 
+    const cpuValue = (data.current && data.current.cpu && !isNaN(data.current.cpu.value))
+        ? data.current.cpu.value.toFixed(1)
         : '0.0';
-    const ramValue = (data.current && data.current.ram && !isNaN(data.current.ram.value)) 
-        ? data.current.ram.value.toFixed(1) 
+    const ramValue = (data.current && data.current.ram && !isNaN(data.current.ram.value))
+        ? data.current.ram.value.toFixed(1)
         : '0.0';
-    const diskValue = (data.current && data.current.disk && !isNaN(data.current.disk.value)) 
-        ? data.current.disk.value.toFixed(1) 
+    const diskValue = (data.current && data.current.disk && !isNaN(data.current.disk.value))
+        ? data.current.disk.value.toFixed(1)
         : '0.0';
-    
+
     document.getElementById('cpu-val').textContent = cpuValue;
     document.getElementById('ram-val').textContent = ramValue;
     document.getElementById('disk-val').textContent = diskValue;
@@ -1280,11 +1291,11 @@ function updateSparkTopology(sparkData) {
         const memory = parseInt(w.memory) || 0;
         const memoryUsed = parseInt(w.memory_used) || 0;
         const memoryFree = parseInt(w.memoryfree) || memory - memoryUsed;
-        
+
         // Calcular porcentajes de forma segura
         const coreUsage = cores > 0 ? ((coresUsed / cores) * 100) : 0;
         const memUsage = memory > 0 ? ((memoryUsed / memory) * 100) : 0;
-        
+
         const statusColor = w.state === 'ALIVE' ? '#10b981' : '#ef4444';
         const cpuColor = coreUsage > 80 ? '#ef4444' : (coreUsage > 50 ? '#f59e0b' : '#3b82f6');
         const memColor = memUsage > 80 ? '#ef4444' : (memUsage > 50 ? '#f59e0b' : '#8b5cf6');
@@ -1462,7 +1473,7 @@ function updateSparkJobs() {
                     const memPercent = exec.totalOnHeapMemory > 0 ? ((exec.usedOnHeapMemory / exec.totalOnHeapMemory) * 100).toFixed(1) : 0;
                     const gcPercent = exec.totalDuration > 0 ? ((exec.totalGCTime / exec.totalDuration) * 100).toFixed(1) : 0;
                     const statusColor = exec.isActive ? '#10b981' : '#ef4444';
-                    
+
                     // Determinar nivel de alerta de memoria
                     let memColor = '#8b5cf6';
                     let memWarning = '';
@@ -1507,7 +1518,7 @@ function updateSparkJobs() {
                     </table>
                 `;
                 executorsTable.innerHTML = tableHtml;
-                
+
                 // Actualizar gráfico de comparación de executors
 
             } else if (executorsTable) {
@@ -1600,7 +1611,7 @@ function updateHdfsMetrics(hdfs) {
         hdfs.datanodes.forEach(node => {
             const usagePercent = node.capacity > 0 ? (node.used / node.capacity * 100) : 0;
             const statusColor = node.state === 'In Service' ? '#10b981' : '#f59e0b';
-            
+
             html += `
                 <div style="background:#1a1f2e; border: 2px solid #6b7280; border-left: 4px solid ${statusColor}; border-radius:12px; padding:20px; box-shadow: 0 4px 12px rgba(0,0,0,0.5); backdrop-filter: blur(10px);">
                     <div style="font-weight:600; font-size:0.95em; margin-bottom:5px; word-break:break-all; color:#e2e8f0;">${node.name}</div>
@@ -1699,48 +1710,48 @@ async function updateTaskTimes() {
     try {
         const data = await fetch('/api/task_times').then(r => r.json());
         const taskTimes = data.task_times;
-        
+
         if (!taskTimes || taskTimes.length === 0) {
             return;
         }
-        
+
         // Limitar cantidad de puntos mostrados para mejor performance
         const maxPoints = 50; // Mostrar solo los últimos 50 puntos de cada tipo
-        
+
         // Separar por tipo pero en líneas conexas
         const fathersTimes = [];
         const mothersTimes = [];
         const childrenTimes = [];
-        
+
         let fathersIdx = 0;
         let mothersIdx = 0;
         let childrenIdx = 0;
-        
+
         taskTimes.forEach((task) => {
             if (task.member_type === 'fathers') {
-                fathersTimes.push({x: fathersIdx++, y: task.processing_time});
+                fathersTimes.push({ x: fathersIdx++, y: task.processing_time });
             } else if (task.member_type === 'mothers') {
-                mothersTimes.push({x: mothersIdx++, y: task.processing_time});
+                mothersTimes.push({ x: mothersIdx++, y: task.processing_time });
             } else if (task.member_type === 'children') {
-                childrenTimes.push({x: childrenIdx++, y: task.processing_time});
+                childrenTimes.push({ x: childrenIdx++, y: task.processing_time });
             }
         });
-        
+
         // Aplicar límite y hacer downsampling si es necesario
         const downsample = (data, limit) => {
             if (data.length <= limit) return data;
             const step = Math.ceil(data.length / limit);
             return data.filter((_, i) => i % step === 0).slice(-limit);
         };
-        
+
         // Actualizar gráfica con datos limitados
         charts.taskTimes.data.datasets[0].data = downsample(fathersTimes, maxPoints);
         charts.taskTimes.data.datasets[1].data = downsample(mothersTimes, maxPoints);
         charts.taskTimes.data.datasets[2].data = downsample(childrenTimes, maxPoints);
-        
+
         // Actualizar sin animación para mejor performance
         charts.taskTimes.update('none');
-        
+
     } catch (error) {
         console.error('Error updating task times:', error);
     }
@@ -1761,110 +1772,18 @@ document.addEventListener('DOMContentLoaded', () => {
 // ==================== NUEVAS FUNCIONES DE ANÁLISIS ====================
 
 // Análisis de Heredabilidad Genética
-function updateHeritability(data) {
-    const colors = getThemeColors();
-    
-    // Obtener datos de padres e hijos
-    const fathers = data.genetic_data?.fathers || [];
-    const mothers = data.genetic_data?.mothers || [];
-    const children = data.genetic_data?.children || [];
-    
-    if (fathers.length === 0 || mothers.length === 0 || children.length === 0) {
-        updateBarChart(charts.heritability, [], []);
-        return;
-    }
-    
-    // Crear mapa de genes por familia y posición cromosómica
-    const parentGenes = {};  // family_id -> {chr:pos -> [genes]}
-    const childGenes = {};   // family_id -> {chr:pos -> [genes]}
-    
-    // Procesar padres
-    [...fathers, ...mothers].forEach(snp => {
-        if (!snp || !snp.gene || snp.gene === 'Unknown' || !snp.chromosome || !snp.position) return;
-        const familyId = snp.family_id || 'unknown';
-        const key = `${snp.chromosome}:${snp.position}`;
-        
-        if (!parentGenes[familyId]) parentGenes[familyId] = {};
-        if (!parentGenes[familyId][key]) parentGenes[familyId][key] = [];
-        parentGenes[familyId][key].push(snp.gene);
-    });
-    
-    // Procesar hijos
-    children.forEach(snp => {
-        if (!snp || !snp.gene || snp.gene === 'Unknown' || !snp.chromosome || !snp.position) return;
-        const familyId = snp.family_id || 'unknown';
-        const key = `${snp.chromosome}:${snp.position}`;
-        
-        if (!childGenes[familyId]) childGenes[familyId] = {};
-        if (!childGenes[familyId][key]) childGenes[familyId][key] = [];
-        childGenes[familyId][key].push(snp.gene);
-    });
-    
-    // Calcular heredabilidad por gen
-    const geneHeritability = {};
-    
-    Object.keys(parentGenes).forEach(familyId => {
-        if (!childGenes[familyId]) return;
-        
-        Object.keys(parentGenes[familyId]).forEach(pos => {
-            const parentGenesAtPos = parentGenes[familyId][pos];
-            const childGenesAtPos = childGenes[familyId][pos] || [];
-            
-            parentGenesAtPos.forEach(gene => {
-                if (!geneHeritability[gene]) {
-                    geneHeritability[gene] = { inherited: 0, total: 0 };
-                }
-                geneHeritability[gene].total++;
-                
-                if (childGenesAtPos.includes(gene)) {
-                    geneHeritability[gene].inherited++;
-                }
-            });
-        });
-    });
-    
-    // Calcular porcentajes y obtener top 15
-    const heritabilityArray = Object.entries(geneHeritability)
-        .map(([gene, counts]) => ({
-            gene,
-            percentage: (counts.inherited / counts.total * 100).toFixed(1),
-            inherited: counts.inherited,
-            total: counts.total
-        }))
-        .sort((a, b) => b.percentage - a.percentage)
-        .slice(0, 15);
-    
-    if (heritabilityArray.length === 0) {
-        updateBarChart(charts.heritability, [], []);
-        return;
-    }
-    
-    const labels = heritabilityArray.map(h => h.gene);
-    const percentages = heritabilityArray.map(h => parseFloat(h.percentage));
-    
-    updateBarChart(charts.heritability, labels, [{
-        label: '% Heredado',
-        data: percentages,
-        backgroundColor: percentages.map(p => {
-            if (p > 80) return colors.green + 'CC';
-            if (p > 50) return colors.amber + 'CC';
-            return colors.red + 'CC';
-        }),
-        borderColor: colors.textColor,
-        borderWidth: 1
-    }]);
-}
+
 
 // Análisis de Variantes Raras
 function updateRareVariants(data) {
     const colors = getThemeColors();
-    
+
     const allData = [
-        ...(data.genetic_data?.fathers || []),
-        ...(data.genetic_data?.mothers || []),
-        ...(data.genetic_data?.children || [])
+        ...filterBySelectedFamilies(data.genetic_data?.fathers || []),
+        ...filterBySelectedFamilies(data.genetic_data?.mothers || []),
+        ...filterBySelectedFamilies(data.genetic_data?.children || [])
     ];
-    
+
     if (allData.length === 0) {
         charts.rareVariants.data.labels = ['Sin datos'];
         charts.rareVariants.data.datasets[0].data = [1];
@@ -1872,23 +1791,23 @@ function updateRareVariants(data) {
         charts.rareVariants.update('none');
         return;
     }
-    
+
     // Contar frecuencia de cada genotipo
     const genotypeFrequency = {};
     allData.forEach(snp => {
         if (!snp || !snp.genotype) return;
         genotypeFrequency[snp.genotype] = (genotypeFrequency[snp.genotype] || 0) + 1;
     });
-    
+
     const total = allData.length;
     const threshold = total * 0.01;  // 1% threshold
-    
+
     // Clasificar variantes
     let rareVariants = 0;
     let uncommonVariants = 0;
     let commonVariants = 0;
     let veryRareVariants = 0;
-    
+
     Object.values(genotypeFrequency).forEach(count => {
         if (count === 1) {
             veryRareVariants++;
@@ -1900,17 +1819,17 @@ function updateRareVariants(data) {
             commonVariants++;
         }
     });
-    
+
     charts.rareVariants.data.labels = [
         `Únicas (${veryRareVariants})`,
-        `Raras <1% (${rareVariants})`, 
+        `Raras <1% (${rareVariants})`,
         `Poco comunes <5% (${uncommonVariants})`,
         `Comunes >5% (${commonVariants})`
     ];
     charts.rareVariants.data.datasets[0].data = [
-        veryRareVariants, 
-        rareVariants, 
-        uncommonVariants, 
+        veryRareVariants,
+        rareVariants,
+        uncommonVariants,
         commonVariants
     ];
     charts.rareVariants.data.datasets[0].backgroundColor = [
@@ -1928,7 +1847,7 @@ function updateRareVariants(data) {
 function updateRiskScore(data) {
     const colors = getThemeColors();
     const variantTypes = data.genetic_metrics?.variant_types || {};
-    
+
     // Calcular score de riesgo (ejemplo: deletions y frameshift son más riesgosos)
     const riskWeights = {
         'deletion': 5,
@@ -1939,18 +1858,18 @@ function updateRiskScore(data) {
         'synonymous': 1,
         'unknown': 1
     };
-    
+
     let totalRisk = 0;
     let totalVariants = 0;
-    
+
     Object.entries(variantTypes).forEach(([type, count]) => {
         const weight = riskWeights[type.toLowerCase()] || 1;
         totalRisk += weight * count;
         totalVariants += count;
     });
-    
+
     const avgRisk = totalVariants > 0 ? (totalRisk / totalVariants) : 0;
-    
+
     // Clasificar riesgo
     let riskLevel = 'Bajo';
     let riskColor = colors.green;
@@ -1964,27 +1883,27 @@ function updateRiskScore(data) {
         riskLevel = 'Medio';
         riskColor = colors.cyan;
     }
-    
+
     // Distribución por nivel de riesgo
     const riskCategories = {
         'Bajo (1-2)': 0,
         'Medio (2-3)': 0,
         'Alto (3-5)': 0
     };
-    
+
     Object.entries(variantTypes).forEach(([type, count]) => {
         const weight = riskWeights[type.toLowerCase()] || 1;
         if (weight <= 2) riskCategories['Bajo (1-2)'] += count;
         else if (weight <= 3) riskCategories['Medio (2-3)'] += count;
         else riskCategories['Alto (3-5)'] += count;
     });
-    
+
     // Calcular riesgo por cohorte desde genetic_data
     const cohortRisks = { fathers: 0, mothers: 0, children: 0 };
     const cohortCounts = { fathers: 0, mothers: 0, children: 0 };
-    
+
     ['fathers', 'mothers', 'children'].forEach(cohort => {
-        const variants = data.genetic_data?.[cohort] || [];
+        const variants = filterBySelectedFamilies(data.genetic_data?.[cohort] || []);
         variants.forEach(snp => {
             if (!snp || !snp.variant_type) return;
             const weight = riskWeights[snp.variant_type.toLowerCase()] || 1;
@@ -1992,14 +1911,14 @@ function updateRiskScore(data) {
             cohortCounts[cohort]++;
         });
     });
-    
+
     // Calcular score promedio (0-5)
     const avgRisks = {
         fathers: cohortCounts.fathers > 0 ? (cohortRisks.fathers / cohortCounts.fathers) : 0,
         mothers: cohortCounts.mothers > 0 ? (cohortRisks.mothers / cohortCounts.mothers) : 0,
         children: cohortCounts.children > 0 ? (cohortRisks.children / cohortCounts.children) : 0
     };
-    
+
     charts.riskScore.data.labels = ['Fathers', 'Mothers', 'Children'];
     charts.riskScore.data.datasets = [{
         label: 'Score de Riesgo (1-5)',
@@ -2012,14 +1931,14 @@ function updateRiskScore(data) {
         borderColor: colors.textColor,
         borderWidth: 2
     }];
-    
+
     charts.riskScore.update('none');
 }
 
 // Comparación de Cohortes MEJORADA
 function updateCohortComparison(data) {
     const colors = getThemeColors();
-    
+
     // Métricas más detalladas para comparar
     const metrics = {
         'Total Variantes': {},
@@ -2029,38 +1948,38 @@ function updateCohortComparison(data) {
         'Variantes Alto Riesgo': {},
         'Diversidad Genotípica': {}
     };
-    
+
     ['fathers', 'mothers', 'children'].forEach(cohort => {
-        const variants = data.genetic_data?.[cohort] || [];
-        
+        const variants = filterBySelectedFamilies(data.genetic_data?.[cohort] || []);
+
         // 1. Total variants
         metrics['Total Variantes'][cohort] = variants.length;
-        
+
         // 2. Unique genes
         const uniqueGenes = new Set(variants.map(v => v?.gene).filter(g => g && g !== 'Unknown'));
         metrics['Genes Únicos'][cohort] = uniqueGenes.size;
-        
+
         // 3. Cromosomas afectados
         const chromosomes = new Set(variants.map(v => v?.chromosome).filter(Boolean));
         metrics['Cromosomas Afectados'][cohort] = chromosomes.size;
-        
+
         // 4. Heterocigosidad promedio
         const heteroData = data.heterozygosity_population?.[cohort] || {};
-        const avgHetero = Object.keys(heteroData).length > 0 ? 
+        const avgHetero = Object.keys(heteroData).length > 0 ?
             Object.values(heteroData).reduce((a, b) => a + b, 0) / Object.keys(heteroData).length : 0;
         metrics['Heterocigosidad (%)'][cohort] = avgHetero * 100;
-        
+
         // 5. Variantes de alto riesgo (deletion, frameshift, nonsense)
-        const highRisk = variants.filter(v => 
+        const highRisk = variants.filter(v =>
             v?.variant_type && ['deletion', 'frameshift', 'nonsense'].includes(v.variant_type.toLowerCase())
         ).length;
         metrics['Variantes Alto Riesgo'][cohort] = highRisk;
-        
+
         // 6. Diversidad genotípica (diferentes genotipos)
         const genotypes = new Set(variants.map(v => v?.genotype).filter(Boolean));
         metrics['Diversidad Genotípica'][cohort] = genotypes.size;
     });
-    
+
     // Normalizar valores para radar chart (0-100)
     const normalizedMetrics = {};
     Object.entries(metrics).forEach(([metric, cohortValues]) => {
@@ -2070,9 +1989,9 @@ function updateCohortComparison(data) {
             normalizedMetrics[metric][cohort] = (val / maxVal) * 100;
         });
     });
-    
+
     const labels = Object.keys(metrics);
-    
+
     charts.cohortComparison.data.labels = labels;
     charts.cohortComparison.data.datasets = [
         {
@@ -2106,14 +2025,14 @@ function updateCohortComparison(data) {
             pointBorderColor: colors.textColor
         }
     ];
-    
+
     charts.cohortComparison.update('none');
 }
 
 // Red Genética - Usa datos REALES del backend (gene_frequency)
 function updateGeneticNetwork(data) {
     const colors = getThemeColors();
-    
+
     // DEBUG: Ver qué datos llegan
     console.log('🔍 Network Debug - gene_frequency:', data.genetic_metrics?.gene_frequency);
     console.log('🔍 Network Debug - genetic_data:', {
@@ -2121,69 +2040,73 @@ function updateGeneticNetwork(data) {
         mothers: (data.genetic_data?.mothers || []).length,
         children: (data.genetic_data?.children || []).length
     });
-    
-    // Obtener todos los datos genéticos
-    const allData = [
+
+    // Obtener todos los datos genéticos y filtrar por familia si es necesario
+    let allData = [
         ...(data.genetic_data?.fathers || []),
         ...(data.genetic_data?.mothers || []),
         ...(data.genetic_data?.children || [])
     ];
-    
+
+    if (currentFamilyFilter && currentFamilyFilter !== 'all') {
+        allData = allData.filter(s => String(s.family_id) === currentFamilyFilter);
+    }
+
     if (allData.length === 0) {
         console.warn('⚠️ No genetic data for network');
         charts.network.data.datasets = [];
         charts.network.update('none');
         return;
     }
-    
+
     // Calcular frecuencia de genes Y cromosomas desde los datos
     const geneFrequency = {};
     const geneChromosomes = {};
-    
+
     allData.forEach(snp => {
         if (!snp || !snp.gene || snp.gene === 'Unknown' || snp.gene.startsWith('Chr')) return;
         if (!snp.chromosome) return;
-        
+
         // Contar frecuencia
         geneFrequency[snp.gene] = (geneFrequency[snp.gene] || 0) + 1;
-        
+
         // Guardar cromosomas
         if (!geneChromosomes[snp.gene]) {
             geneChromosomes[snp.gene] = new Set();
         }
         geneChromosomes[snp.gene].add(snp.chromosome);
     });
-    
+
     console.log('✅ Found', Object.keys(geneFrequency).length, 'unique genes');
-    
+
     if (Object.keys(geneFrequency).length === 0) {
         console.warn('⚠️ No valid genes found');
         charts.network.data.datasets = [];
         charts.network.update('none');
         return;
     }
-    
+
     // Top 15 genes más frecuentes
     const topGenes = Object.entries(geneFrequency)
         .filter(([gene, count]) => gene && gene !== 'Unknown')
         .sort((a, b) => b[1] - a[1])
         .slice(0, 15)
         .map(([gene, count]) => ({ gene, count }));
-    
+
     console.log('✅ Top 15:', topGenes.map(g => `${g.gene}(${g.count})`).join(', '));
-    
+
     if (topGenes.length === 0) {
         console.warn('⚠️ No top genes after filtering');
         charts.network.data.datasets = [];
         charts.network.update('none');
         return;
     }
-    
+
     // Posicionar genes en círculo
     const angleStep = (2 * Math.PI) / topGenes.length;
     const radius = 100;
     const genePositions = {};
-    
+
     topGenes.forEach((geneObj, idx) => {
         const angle = idx * angleStep;
         genePositions[geneObj.gene] = {
@@ -2192,7 +2115,7 @@ function updateGeneticNetwork(data) {
             count: geneObj.count
         };
     });
-    
+
     // Crear dataset de nodos
     const nodeData = topGenes.map(geneObj => ({
         x: genePositions[geneObj.gene].x,
@@ -2200,22 +2123,22 @@ function updateGeneticNetwork(data) {
         gene: geneObj.gene,
         count: geneObj.count
     }));
-    
+
     // Crear dataset de conexiones (genes que comparten cromosomas)
     const connectionData = [];
     const topGeneNames = topGenes.map(g => g.gene);
-    
+
     for (let i = 0; i < topGeneNames.length; i++) {
         for (let j = i + 1; j < topGeneNames.length; j++) {
             const gene1 = topGeneNames[i];
             const gene2 = topGeneNames[j];
-            
+
             const chr1 = geneChromosomes[gene1] || new Set();
             const chr2 = geneChromosomes[gene2] || new Set();
-            
+
             // Si comparten al menos un cromosoma, crear conexión
             const sharedChromosomes = [...chr1].filter(c => chr2.has(c));
-            
+
             if (sharedChromosomes.length > 0) {
                 // Agregar línea de conexión
                 connectionData.push({
@@ -2231,7 +2154,7 @@ function updateGeneticNetwork(data) {
             }
         }
     }
-    
+
     // Dataset de líneas de conexión
     const connectionDataset = {
         label: 'Interacciones (mismo cromosoma)',
@@ -2243,7 +2166,7 @@ function updateGeneticNetwork(data) {
         fill: false,
         spanGaps: false
     };
-    
+
     // Dataset de nodos
     const nodeDataset = {
         label: 'Genes',
@@ -2255,14 +2178,14 @@ function updateGeneticNetwork(data) {
         pointHoverRadius: nodeData.map(n => Math.min(Math.sqrt(n.count) * 2 + 12, 24)),
         showLine: false
     };
-    
+
     charts.network.data.datasets = [connectionDataset, nodeDataset];
-    
+
     // Actualizar escalas
     charts.network.options.scales.x.min = -radius * 1.3;
     charts.network.options.scales.x.max = radius * 1.3;
     charts.network.options.scales.y.min = -radius * 1.3;
     charts.network.options.scales.y.max = radius * 1.3;
-    
+
     charts.network.update('none');
 }

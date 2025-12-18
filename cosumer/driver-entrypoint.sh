@@ -111,7 +111,7 @@ while true; do
     # Calcular cores dinámicamente basado en workers disponibles
     total_cores=0
     worker_count=0
-    cores_per_worker=2  # Default, puede ser configurado con env var
+    cores_per_worker=${CORES_PER_WORKER:-2}  # Default, puede ser configurado con env var
     
     echo "🔍 Detecting available workers..."
     for ((i=1; i<=15; i++)); do

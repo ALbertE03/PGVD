@@ -60,15 +60,22 @@
             width: 100%;
             height: 100%;
             background: radial-gradient(ellipse at top, rgba(59, 130, 246, 0.15) 0%, transparent 50%),
-                        radial-gradient(ellipse at bottom right, rgba(139, 92, 246, 0.15) 0%, transparent 50%);
+                radial-gradient(ellipse at bottom right, rgba(139, 92, 246, 0.15) 0%, transparent 50%);
             z-index: 0;
             pointer-events: none;
             animation: gradient-float 20s ease-in-out infinite;
         }
 
         @keyframes gradient-float {
-            0%, 100% { opacity: 0.6; }
-            50% { opacity: 0.8; }
+
+            0%,
+            100% {
+                opacity: 0.6;
+            }
+
+            50% {
+                opacity: 0.8;
+            }
         }
 
         .container {
@@ -100,23 +107,27 @@
             left: 0;
             width: 100%;
             height: 4px;
-            background: linear-gradient(90deg, 
-                var(--accent-blue), 
-                var(--accent-cyan), 
-                var(--accent-green), 
-                var(--accent-amber),
-                var(--accent-red),
-                var(--accent-purple),
-                var(--accent-pink),
-                var(--accent-blue)
-            );
+            background: linear-gradient(90deg,
+                    var(--accent-blue),
+                    var(--accent-cyan),
+                    var(--accent-green),
+                    var(--accent-amber),
+                    var(--accent-red),
+                    var(--accent-purple),
+                    var(--accent-pink),
+                    var(--accent-blue));
             background-size: 300% 100%;
             animation: gradient-shift 10s linear infinite;
         }
 
         @keyframes gradient-shift {
-            0% { background-position: 0% 50%; }
-            100% { background-position: 300% 50%; }
+            0% {
+                background-position: 0% 50%;
+            }
+
+            100% {
+                background-position: 300% 50%;
+            }
         }
 
         h1 {
@@ -167,34 +178,38 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: linear-gradient(135deg, transparent 0%, rgba(255,255,255,0.02) 100%);
+            background: linear-gradient(135deg, transparent 0%, rgba(255, 255, 255, 0.02) 100%);
             pointer-events: none;
         }
 
-        .fathers-card::before { 
+        .fathers-card::before {
             background: linear-gradient(90deg, var(--accent-blue), var(--accent-cyan));
         }
+
         .fathers-card:hover {
             box-shadow: 0 8px 32px var(--accent-blue-glow), var(--shadow-lg);
         }
-        
-        .mothers-card::before { 
+
+        .mothers-card::before {
             background: linear-gradient(90deg, var(--accent-red), var(--accent-pink));
         }
+
         .mothers-card:hover {
             box-shadow: 0 8px 32px var(--accent-red-glow), var(--shadow-lg);
         }
-        
-        .children-card::before { 
+
+        .children-card::before {
             background: linear-gradient(90deg, var(--accent-green), var(--accent-cyan));
         }
+
         .children-card:hover {
             box-shadow: 0 8px 32px var(--accent-green-glow), var(--shadow-lg);
         }
-        
-        .total-card::before { 
+
+        .total-card::before {
             background: linear-gradient(90deg, var(--accent-purple), var(--accent-pink));
         }
+
         .total-card:hover {
             box-shadow: 0 8px 32px var(--accent-purple-glow), var(--shadow-lg);
         }
@@ -216,19 +231,22 @@
             letter-spacing: -0.025em;
         }
 
-        .fathers-card .stat-value { 
+        .fathers-card .stat-value {
             color: var(--accent-blue);
             text-shadow: 0 0 20px var(--accent-blue-glow), 0 0 40px var(--accent-blue-glow);
         }
-        .mothers-card .stat-value { 
+
+        .mothers-card .stat-value {
             color: var(--accent-red);
             text-shadow: 0 0 20px var(--accent-red-glow), 0 0 40px var(--accent-red-glow);
         }
-        .children-card .stat-value { 
+
+        .children-card .stat-value {
             color: var(--accent-green);
             text-shadow: 0 0 20px var(--accent-green-glow), 0 0 40px var(--accent-green-glow);
         }
-        .total-card .stat-value { 
+
+        .total-card .stat-value {
             color: var(--accent-purple);
             text-shadow: 0 0 20px var(--accent-purple-glow), 0 0 40px var(--accent-purple-glow);
         }
@@ -247,8 +265,15 @@
             margin-top: 8px;
         }
 
-        .trend-up { color: var(--accent-green); font-weight: 600; }
-        .trend-neutral { color: var(--accent-blue); font-weight: 600; }
+        .trend-up {
+            color: var(--accent-green);
+            font-weight: 600;
+        }
+
+        .trend-neutral {
+            color: var(--accent-blue);
+            font-weight: 600;
+        }
 
         .charts-grid {
             display: grid;
@@ -327,7 +352,8 @@
             border-collapse: collapse;
         }
 
-        th, td {
+        th,
+        td {
             padding: 16px 24px;
             text-align: left;
             border-bottom: 1px solid #6b7280;
@@ -370,11 +396,22 @@
             color: #ffffff;
             font-size: 0.9em;
         }
-        
+
         /* Utility classes for status colors */
-        .status-alive { color: var(--accent-green); font-weight: 600; }
-        .status-dead { color: var(--accent-red); font-weight: 600; }
-        .status-warning { color: var(--accent-amber); font-weight: 600; }
+        .status-alive {
+            color: var(--accent-green);
+            font-weight: 600;
+        }
+
+        .status-dead {
+            color: var(--accent-red);
+            font-weight: 600;
+        }
+
+        .status-warning {
+            color: var(--accent-amber);
+            font-weight: 600;
+        }
 
         /* Main Navigation Tabs */
         .main-nav {
@@ -458,16 +495,34 @@
             border-color: #6b7280;
             text-shadow: 0 0 20px var(--accent-blue-glow);
         }
+
+        .family-selector {
+            background: var(--card-bg);
+            color: #ffffff;
+            border: 2px solid #6b7280;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 0.875em;
+            font-weight: 600;
+            cursor: pointer;
+            outline: none;
+            min-width: 200px;
+        }
+
+        .family-selector:focus {
+            border-color: var(--accent-blue);
+            box-shadow: 0 0 15px var(--accent-blue-glow);
+        }
     </style>
     <script>
         function switchView(viewId) {
             // Hide all views
             document.getElementById('cluster-view').style.display = 'none';
             document.getElementById('analysis-view').style.display = 'none';
-            
+
             // Show selected view
             document.getElementById(viewId).style.display = 'block';
-            
+
             // Update buttons
             document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
             event.target.classList.add('active');
@@ -483,9 +538,13 @@
                 <p class="subtitle">Real-time Advanced Analytics & Visualization</p>
             </div>
             <div style="text-align: right;">
-                <div style="padding: 15px 25px; border-radius: 12px; border: 2px solid #6b7280; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);">
-                    <div style="font-size: 0.75em; color: rgba(255, 255, 255, 0.9); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 5px; font-weight: 600;">Familias Completadas</div>
-                    <div style="font-size: 2.5em; font-weight: 700; color: #ffffff; line-height: 1; text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);" id="families-completed-count">0</div>
+                <div
+                    style="padding: 15px 25px; border-radius: 12px; border: 2px solid #6b7280; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);">
+                    <div
+                        style="font-size: 0.75em; color: rgba(255, 255, 255, 0.9); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 5px; font-weight: 600;">
+                        Familias Completadas</div>
+                    <div style="font-size: 2.5em; font-weight: 700; color: #ffffff; line-height: 1; text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);"
+                        id="families-completed-count">0</div>
                 </div>
             </div>
         </header>
@@ -495,336 +554,364 @@
             <button class="nav-btn active" onclick="switchView('cluster-view')">Cluster Metrics</button>
             <button class="nav-btn" onclick="switchView('analysis-view')">Data Analysis</button>
         </div>
+        
 
         <!-- View: Cluster Metrics -->
         <div id="cluster-view">
 
-    <!-- Stats Overview -->
-    <div class="stats-overview">
-        <div class="stat-card fathers-card">
-            <div class="stat-label">Fathers</div>
-            <div class="stat-value" id="fathers-count">0</div>
-        </div>
-        <div class="stat-card mothers-card">
-            <div class="stat-label">Mothers</div>
-            <div class="stat-value" id="mothers-count">0</div>
-        </div>
-        <div class="stat-card children-card">
-            <div class="stat-label">Children</div>
-            <div class="stat-value" id="children-count">0</div>
-        </div>
-        <div class="stat-card total-card">
-            <div class="stat-label">Total Records</div>
-            <div class="stat-value" id="total-count">0</div>
-        </div>
-    </div>
-
-    <!-- Processing Rate Chart -->
-    <div class="chart-container" style="margin-bottom: 20px;">
-        <div class="chart-title">Processing Rate - Last 50 Batches</div>
-        <div class="chart-body">
-            <canvas id="processingChart"></canvas>
-        </div>
-    </div>
-
-    <!-- Cluster Health Section -->
-    <div class="chart-container" style="margin-bottom: 20px;">
-        <div class="chart-title">Spark Cluster Resources</div>
-        <div class="chart-body">
-            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px;">
-                <div style="position: relative; height: 200px;">
-                    <h4 style="text-align:center;margin-bottom:10px;font-size:0.9em;color:#ffffff;">CPU Usage (Cores)</h4>
-                    <canvas id="cpuChart"></canvas>
+            <!-- Stats Overview -->
+            <div class="stats-overview">
+                <div class="stat-card fathers-card">
+                    <div class="stat-label">Fathers</div>
+                    <div class="stat-value" id="fathers-count">0</div>
                 </div>
-                <div style="position: relative; height: 200px;">
-                    <h4 style="text-align:center;margin-bottom:10px;font-size:0.9em;color:#ffffff;">Memory Usage (MB)</h4>
-                    <canvas id="ramChart"></canvas>
+                <div class="stat-card mothers-card">
+                    <div class="stat-label">Mothers</div>
+                    <div class="stat-value" id="mothers-count">0</div>
+                </div>
+                <div class="stat-card children-card">
+                    <div class="stat-label">Children</div>
+                    <div class="stat-value" id="children-count">0</div>
+                </div>
+                <div class="stat-card total-card">
+                    <div class="stat-label">Total Records</div>
+                    <div class="stat-value" id="total-count">0</div>
                 </div>
             </div>
-            <div style="margin-top:10px; text-align:center; font-size:0.8em; color:#ffffff;">
-                <span style="margin:0 15px;"><strong>CPU:</strong> <span id="cpu-val">-</span>%</span>
-                <span style="margin:0 15px;"><strong>RAM:</strong> <span id="ram-val">-</span>%</span>
-            </div>
-        </div>
-    </div>
 
-    <!-- Spark Cluster Topology -->
-    <div class="chart-container" style="margin-bottom: 20px;">
-        <div class="chart-title">Spark Cluster Topology</div>
-        <div class="chart-body">
-            <!-- Masters Section -->
-            <h4 style="margin-bottom:10px; color:#ffffff; font-weight:600;">Masters</h4>
-            <div id="spark-masters" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px; ;">
-                <div class="loading">Waiting for Master info...</div>
-            </div>
-
-            <!-- Workers Section -->
-            <h4 style="margin-bottom:10px; color:#ffffff; font-weight:600;">Workers</h4>
-            <div id="spark-topology"
-                style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px;">
-                <div class="loading">Waiting for Spark metrics...</div>
-            </div>
-        </div>
-    </div>
-
-    <!-- HDFS Storage Section -->
-    <div class="chart-container" style="margin-bottom: 20px;">
-        <div class="chart-title">HDFS - Hadoop Distributed File System</div>
-        <div class="chart-body">
-            <!-- Main Layout: Chart + Stats -->
-            <div style="display: grid; grid-template-columns: 300px 1fr; gap: 30px; align-items: start;">
-                
-                <!-- Disk Usage Chart -->
-                <div style="text-align: center;">
-                    <h4 style="margin-bottom:15px; font-size:0.95em; color:#ffffff;">Storage Usage</h4>
-                    <div style="position: relative; height: 220px;">
-                        <canvas id="diskChart"></canvas>
-                    </div>
-                    <div style="margin-top:10px; font-size:0.85em; color:#ffffff;">
-                        <strong>Usage:</strong> <span id="disk-val">-</span>%
-                    </div>
+            <!-- Processing Rate Chart -->
+            <div class="chart-container" style="margin-bottom: 20px;">
+                <div class="chart-title">Processing Rate - Last 50 Batches</div>
+                <div class="chart-body">
+                    <canvas id="processingChart"></canvas>
                 </div>
-                
-                <!-- HDFS Stats Grid -->
-                <div>
-                    <!-- Overview Stats -->
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; margin-bottom: 20px;">
-                        <div style="background:#1a1f2e; border:2px solid #6b7280; border-radius:8px; padding:15px; text-align:center; backdrop-filter: blur(10px);">
-                            <div style="font-size:0.7em; text-transform:uppercase; color:#ffffff; font-weight:600;">Status</div>
-                            <div id="hdfs-status" style="font-size:1.2em; font-weight:bold; color:#ffffff;">-</div>
+            </div>
+
+            <!-- Cluster Health Section -->
+            <div class="chart-container" style="margin-bottom: 20px;">
+                <div class="chart-title">Spark Cluster Resources</div>
+                <div class="chart-body">
+                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px;">
+                        <div style="position: relative; height: 200px;">
+                            <h4 style="text-align:center;margin-bottom:10px;font-size:0.9em;color:#ffffff;">CPU Usage
+                                (Cores)</h4>
+                            <canvas id="cpuChart"></canvas>
                         </div>
-                        <div style="background:#1a1f2e; border:2px solid #6b7280; border-radius:8px; padding:15px; text-align:center; backdrop-filter: blur(10px);">
-                            <div style="font-size:0.7em; text-transform:uppercase; color:#ffffff; font-weight:600;">Capacity</div>
-                            <div id="hdfs-capacity" style="font-size:1.2em; font-weight:bold; color:#ffffff;">-</div>
-                        </div>
-                        <div style="background:#1a1f2e; border:2px solid #6b7280; border-radius:8px; padding:15px; text-align:center; backdrop-filter: blur(10px);">
-                            <div style="font-size:0.7em; text-transform:uppercase; color:#ffffff; font-weight:600;">Used</div>
-                            <div id="hdfs-used" style="font-size:1.2em; font-weight:bold; color:#ffffff;">-</div>
-                        </div>
-                        <div style="background:#1a1f2e; border:2px solid #6b7280; border-radius:8px; padding:15px; text-align:center; backdrop-filter: blur(10px);">
-                            <div style="font-size:0.7em; text-transform:uppercase; color:#ffffff; font-weight:600;">Remaining</div>
-                            <div id="hdfs-remaining" style="font-size:1.2em; font-weight:bold; color:#ffffff;">-</div>
-                        </div>
-                        <div style="background:#1a1f2e; border:2px solid #6b7280; border-radius:8px; padding:15px; text-align:center; backdrop-filter: blur(10px);">
-                            <div style="font-size:0.7em; text-transform:uppercase; color:#ffffff; font-weight:600;">Usage %</div>
-                            <div id="hdfs-percentage" style="font-size:1.2em; font-weight:bold; color:#3b82f6; text-shadow: 0 0 10px rgba(59,130,246,0.5);">-</div>
+                        <div style="position: relative; height: 200px;">
+                            <h4 style="text-align:center;margin-bottom:10px;font-size:0.9em;color:#ffffff;">Memory Usage
+                                (MB)</h4>
+                            <canvas id="ramChart"></canvas>
                         </div>
                     </div>
-
-                    <!-- HDFS Details -->
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px;">
-                        <div style="background:#1a1f2e; border:2px solid #6b7280; border-radius:8px; padding:15px; backdrop-filter: blur(10px);">
-                            <h5 style="margin-bottom:10px; color:#ffffff; font-weight:600;">Data Stats</h5>
-                            <div style="font-size:0.85em; color:#ffffff;">
-                                <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
-                                    <span>Total Files:</span>
-                                    <strong id="hdfs-files" style="color:#ffffff;">-</strong>
-                                </div>
-                                <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
-                                    <span>Total Blocks:</span>
-                                    <strong id="hdfs-blocks" style="color:#ffffff;">-</strong>
-                                </div>
-                            </div>
-                        </div>
-                        <div style="background:#1a1f2e; border:2px solid #6b7280; border-radius:8px; padding:15px; backdrop-filter: blur(10px);">
-                            <h5 style="margin-bottom:10px; color:#ffffff; font-weight:600;">DataNodes</h5>
-                            <div style="font-size:0.85em; color:#ffffff;">
-                                <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
-                                    <span>Live:</span>
-                                    <strong id="hdfs-live-nodes" style="color:#10b981; text-shadow: 0 0 10px rgba(16,185,129,0.5);">-</strong>
-                                </div>
-                                <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
-                                    <span>Dead:</span>
-                                    <strong id="hdfs-dead-nodes" style="color:#ef4444; text-shadow: 0 0 10px rgba(239,68,68,0.5);">-</strong>
-                                </div>
-                            </div>
-                        </div>
-                        <div style="background:#1a1f2e; border:2px solid #6b7280; border-radius:8px; padding:15px; backdrop-filter: blur(10px);">
-                            <h5 style="margin-bottom:10px; color:#ffffff; font-weight:600;">Health</h5>
-                            <div style="font-size:0.85em; color:#ffffff;">
-                                <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
-                                    <span>Under Replicated:</span>
-                                    <strong id="hdfs-under-replicated" style="color:#ffffff;">-</strong>
-                                </div>
-                                <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
-                                    <span>Corrupt:</span>
-                                    <strong id="hdfs-corrupt" style="color:#ffffff;">-</strong>
-                                </div>
-                                <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
-                                    <span>Missing:</span>
-                                    <strong id="hdfs-missing" style="color:#ffffff;">-</strong>
-                                </div>
-                            </div>
-                        </div>
-                        <div style="background:#1a1f2e; border:2px solid #6b7280; border-radius:8px; padding:15px; backdrop-filter: blur(10px);">
-                            <h5 style="margin-bottom:10px; color:#ffffff; font-weight:600;">Mode</h5>
-                            <div style="font-size:0.85em; color:#ffffff;">
-                                <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
-                                    <span>Safe Mode:</span>
-                                    <strong id="hdfs-safemode" style="color:#ffffff;">-</strong>
-                                </div>
-                            </div>
-                        </div>
+                    <div style="margin-top:10px; text-align:center; font-size:0.8em; color:#ffffff;">
+                        <span style="margin:0 15px;"><strong>CPU:</strong> <span id="cpu-val">-</span>%</span>
+                        <span style="margin:0 15px;"><strong>RAM:</strong> <span id="ram-val">-</span>%</span>
                     </div>
                 </div>
             </div>
 
-            <!-- DataNodes Section -->
-            <h4 style="margin-top:25px; margin-bottom:15px; color:#ffffff; border-top:1px solid #2d3748; padding-top:20px; font-weight:600;">DataNode Details</h4>
-            <div id="hdfs-datanodes" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 15px;">
-                <div style="color:#ffffff;">Waiting for DataNode info...</div>
-            </div>
-        </div>
-    </div>
+            <!-- Spark Cluster Topology -->
+            <div class="chart-container" style="margin-bottom: 20px;">
+                <div class="chart-title">Spark Cluster Topology</div>
+                <div class="chart-body">
+                    <!-- Masters Section -->
+                    <h4 style="margin-bottom:10px; color:#ffffff; font-weight:600;">Masters</h4>
+                    <div id="spark-masters"
+                        style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px; ;">
+                        <div class="loading">Waiting for Master info...</div>
+                    </div>
 
-    <!-- Spark Jobs & Performance -->
-    <div class="chart-container" style="margin-bottom: 20px;">
-        <div class="chart-title">Spark Jobs & Performance Metrics</div>
-        <div class="chart-body">
-            <!-- Application Info -->
-            <div id="spark-app-info" style="background:#0f1419; padding:12px; border-radius:6px; margin-bottom:20px; border-left:3px solid #3b82f6;">
-                <div style="color:#94a3b8; font-size:0.9em;">Loading application info...</div>
-            </div>
-
-            <!-- Task Completion Times Chart -->
-            <h4 style="margin-bottom:10px; color:#ffffff; font-weight:600;">Tiempos de Completado de Tareas</h4>
-            <div style="background:#0f1419; padding:20px; border-radius:8px; margin-bottom:30px;">
-                <canvas id="taskTimesChart" style="max-height: 300px;"></canvas>
-            </div>
-
-            <!-- Jobs Table -->
-            <h4 style="margin-bottom:10px; color:#ffffff; font-weight:600;">Jobs History</h4>
-            <div id="spark-jobs-table" style="overflow-x:auto; margin-bottom:30px;">
-                <div class="loading">Loading jobs...</div>
-            </div>
-
-            <!-- Executors Table -->
-            <h4 style="margin-bottom:10px; color:#ffffff; font-weight:600; border-top:1px solid #2d3748; padding-top:20px;">Executors Performance</h4>
-            <div id="spark-executors-table" style="overflow-x:auto;">
-                <div class="loading">Loading executors...</div>
-            </div>
-
-        </div>
-    </div>
-    </div> <!-- Close cluster-view -->
-
-    <!-- View: Data Analysis -->
-    <div id="analysis-view" style="display:none;">
-
-    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px;">
-        <!-- Chromosome Distribution -->
-        <div class="chart-container">
-            <div class="chart-title">Chromosome Distribution</div>
-            <div class="chart-body">
-                <div style="margin-bottom: 15px;">
-                    <button onclick="setChromType('all')" class="filter-btn active">All</button>
-                    <button onclick="setChromType('fathers')" class="filter-btn">Fathers</button>
-                    <button onclick="setChromType('mothers')" class="filter-btn">Mothers</button>
-                    <button onclick="setChromType('children')" class="filter-btn">Children</button>
+                    <!-- Workers Section -->
+                    <h4 style="margin-bottom:10px; color:#ffffff; font-weight:600;">Workers</h4>
+                    <div id="spark-topology"
+                        style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px;">
+                        <div class="loading">Waiting for Spark metrics...</div>
+                    </div>
                 </div>
-                <canvas id="chromosomeChart" style="height: 350px;"></canvas>
             </div>
-        </div>
 
-        <!-- Mutation Rate -->
-        <div class="chart-container">
-            <div class="chart-title">Mutation Rate Over Time</div>
-            <div class="chart-body">
-                <canvas id="mutationChart" style="height: 350px;"></canvas>
-            </div>
-        </div>
-    </div>
+            <!-- HDFS Storage Section -->
+            <div class="chart-container" style="margin-bottom: 20px;">
+                <div class="chart-title">HDFS - Hadoop Distributed File System</div>
+                <div class="chart-body">
+                    <!-- Main Layout: Chart + Stats -->
+                    <div style="display: grid; grid-template-columns: 300px 1fr; gap: 30px; align-items: start;">
 
-    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px;">
-        <!-- Population Heterozygosity -->
-        <div class="chart-container">
-            <div class="chart-title">Population Heterozygosity</div>
-            <div class="chart-body">
-                <canvas id="heteroPopChart" style="height: 300px;"></canvas>
-            </div>
-        </div>
+                        <!-- Disk Usage Chart -->
+                        <div style="text-align: center;">
+                            <h4 style="margin-bottom:15px; font-size:0.95em; color:#ffffff;">Storage Usage</h4>
+                            <div style="position: relative; height: 220px;">
+                                <canvas id="diskChart"></canvas>
+                            </div>
+                            <div style="margin-top:10px; font-size:0.85em; color:#ffffff;">
+                                <strong>Usage:</strong> <span id="disk-val">-</span>%
+                            </div>
+                        </div>
 
-        <!-- Genotype Distribution -->
-        <div class="chart-container">
-            <div class="chart-title">Genotype Distribution</div>
-            <div class="chart-body">
-                <div style="margin-bottom: 15px;">
-                    <button onclick="setGenoType('all')" class="filter-btn active">All</button>
-                    <button onclick="setGenoType('fathers')" class="filter-btn">Fathers</button>
-                    <button onclick="setGenoType('mothers')" class="filter-btn">Mothers</button>
-                    <button onclick="setGenoType('children')" class="filter-btn">Children</button>
+                        <!-- HDFS Stats Grid -->
+                        <div>
+                            <!-- Overview Stats -->
+                            <div
+                                style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; margin-bottom: 20px;">
+                                <div
+                                    style="background:#1a1f2e; border:2px solid #6b7280; border-radius:8px; padding:15px; text-align:center; backdrop-filter: blur(10px);">
+                                    <div
+                                        style="font-size:0.7em; text-transform:uppercase; color:#ffffff; font-weight:600;">
+                                        Status</div>
+                                    <div id="hdfs-status" style="font-size:1.2em; font-weight:bold; color:#ffffff;">-
+                                    </div>
+                                </div>
+                                <div
+                                    style="background:#1a1f2e; border:2px solid #6b7280; border-radius:8px; padding:15px; text-align:center; backdrop-filter: blur(10px);">
+                                    <div
+                                        style="font-size:0.7em; text-transform:uppercase; color:#ffffff; font-weight:600;">
+                                        Capacity</div>
+                                    <div id="hdfs-capacity" style="font-size:1.2em; font-weight:bold; color:#ffffff;">-
+                                    </div>
+                                </div>
+                                <div
+                                    style="background:#1a1f2e; border:2px solid #6b7280; border-radius:8px; padding:15px; text-align:center; backdrop-filter: blur(10px);">
+                                    <div
+                                        style="font-size:0.7em; text-transform:uppercase; color:#ffffff; font-weight:600;">
+                                        Used</div>
+                                    <div id="hdfs-used" style="font-size:1.2em; font-weight:bold; color:#ffffff;">-
+                                    </div>
+                                </div>
+                                <div
+                                    style="background:#1a1f2e; border:2px solid #6b7280; border-radius:8px; padding:15px; text-align:center; backdrop-filter: blur(10px);">
+                                    <div
+                                        style="font-size:0.7em; text-transform:uppercase; color:#ffffff; font-weight:600;">
+                                        Remaining</div>
+                                    <div id="hdfs-remaining" style="font-size:1.2em; font-weight:bold; color:#ffffff;">-
+                                    </div>
+                                </div>
+                                <div
+                                    style="background:#1a1f2e; border:2px solid #6b7280; border-radius:8px; padding:15px; text-align:center; backdrop-filter: blur(10px);">
+                                    <div
+                                        style="font-size:0.7em; text-transform:uppercase; color:#ffffff; font-weight:600;">
+                                        Usage %</div>
+                                    <div id="hdfs-percentage"
+                                        style="font-size:1.2em; font-weight:bold; color:#3b82f6; text-shadow: 0 0 10px rgba(59,130,246,0.5);">
+                                        -</div>
+                                </div>
+                            </div>
+
+                            <!-- HDFS Details -->
+                            <div
+                                style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px;">
+                                <div
+                                    style="background:#1a1f2e; border:2px solid #6b7280; border-radius:8px; padding:15px; backdrop-filter: blur(10px);">
+                                    <h5 style="margin-bottom:10px; color:#ffffff; font-weight:600;">Data Stats</h5>
+                                    <div style="font-size:0.85em; color:#ffffff;">
+                                        <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
+                                            <span>Total Files:</span>
+                                            <strong id="hdfs-files" style="color:#ffffff;">-</strong>
+                                        </div>
+                                        <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
+                                            <span>Total Blocks:</span>
+                                            <strong id="hdfs-blocks" style="color:#ffffff;">-</strong>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div
+                                    style="background:#1a1f2e; border:2px solid #6b7280; border-radius:8px; padding:15px; backdrop-filter: blur(10px);">
+                                    <h5 style="margin-bottom:10px; color:#ffffff; font-weight:600;">DataNodes</h5>
+                                    <div style="font-size:0.85em; color:#ffffff;">
+                                        <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
+                                            <span>Live:</span>
+                                            <strong id="hdfs-live-nodes"
+                                                style="color:#10b981; text-shadow: 0 0 10px rgba(16,185,129,0.5);">-</strong>
+                                        </div>
+                                        <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
+                                            <span>Dead:</span>
+                                            <strong id="hdfs-dead-nodes"
+                                                style="color:#ef4444; text-shadow: 0 0 10px rgba(239,68,68,0.5);">-</strong>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div
+                                    style="background:#1a1f2e; border:2px solid #6b7280; border-radius:8px; padding:15px; backdrop-filter: blur(10px);">
+                                    <h5 style="margin-bottom:10px; color:#ffffff; font-weight:600;">Health</h5>
+                                    <div style="font-size:0.85em; color:#ffffff;">
+                                        <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
+                                            <span>Under Replicated:</span>
+                                            <strong id="hdfs-under-replicated" style="color:#ffffff;">-</strong>
+                                        </div>
+                                        <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
+                                            <span>Corrupt:</span>
+                                            <strong id="hdfs-corrupt" style="color:#ffffff;">-</strong>
+                                        </div>
+                                        <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
+                                            <span>Missing:</span>
+                                            <strong id="hdfs-missing" style="color:#ffffff;">-</strong>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div
+                                    style="background:#1a1f2e; border:2px solid #6b7280; border-radius:8px; padding:15px; backdrop-filter: blur(10px);">
+                                    <h5 style="margin-bottom:10px; color:#ffffff; font-weight:600;">Mode</h5>
+                                    <div style="font-size:0.85em; color:#ffffff;">
+                                        <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
+                                            <span>Safe Mode:</span>
+                                            <strong id="hdfs-safemode" style="color:#ffffff;">-</strong>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- DataNodes Section -->
+                    <h4
+                        style="margin-top:25px; margin-bottom:15px; color:#ffffff; border-top:1px solid #2d3748; padding-top:20px; font-weight:600;">
+                        DataNode Details</h4>
+                    <div id="hdfs-datanodes"
+                        style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 15px;">
+                        <div style="color:#ffffff;">Waiting for DataNode info...</div>
+                    </div>
                 </div>
-                <canvas id="genotypeChart" style="height: 300px;"></canvas>
             </div>
-        </div>
-    </div>
 
-    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px;">
-        <!-- Heredabilidad Genética -->
-        <div class="chart-container">
-            <div class="chart-title">🧬 Análisis de Heredabilidad (Top 15 Genes)</div>
-            <div class="chart-body">
-                <div style="margin-bottom: 10px; font-size: 13px; color: var(--text-secondary);">
-                    Genes heredados de padres → hijos en la misma posición cromosómica
+            <!-- Spark Jobs & Performance -->
+            <div class="chart-container" style="margin-bottom: 20px;">
+                <div class="chart-title">Spark Jobs & Performance Metrics</div>
+                <div class="chart-body">
+                    <!-- Application Info -->
+                    <div id="spark-app-info"
+                        style="background:#0f1419; padding:12px; border-radius:6px; margin-bottom:20px; border-left:3px solid #3b82f6;">
+                        <div style="color:#94a3b8; font-size:0.9em;">Loading application info...</div>
+                    </div>
+
+                    <!-- Task Completion Times Chart -->
+                    <h4 style="margin-bottom:10px; color:#ffffff; font-weight:600;">Tiempos de Completado de Tareas</h4>
+                    <div style="background:#0f1419; padding:20px; border-radius:8px; margin-bottom:30px;">
+                        <canvas id="taskTimesChart" style="max-height: 300px;"></canvas>
+                    </div>
+
+                    <!-- Jobs Table -->
+                    <h4 style="margin-bottom:10px; color:#ffffff; font-weight:600;">Jobs History</h4>
+                    <div id="spark-jobs-table" style="overflow-x:auto; margin-bottom:30px;">
+                        <div class="loading">Loading jobs...</div>
+                    </div>
+
+                    <!-- Executors Table -->
+                    <h4
+                        style="margin-bottom:10px; color:#ffffff; font-weight:600; border-top:1px solid #2d3748; padding-top:20px;">
+                        Executors Performance</h4>
+                    <div id="spark-executors-table" style="overflow-x:auto;">
+                        <div class="loading">Loading executors...</div>
+                    </div>
+
                 </div>
-                <canvas id="heritabilityChart" style="height: 350px;"></canvas>
             </div>
-        </div>
+        </div> <!-- Close cluster-view -->
 
-        <!-- Gene Detection -->
-        <div class="chart-container">
-            <div class="chart-title">Detected Genes (Last 30 SNPs)</div>
-            <div class="chart-body">
-                <canvas id="geneChart" style="height: 350px;"></canvas>
+        <!-- View: Data Analysis -->
+        <div id="analysis-view" style="display:none;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px;">
+                <!-- Chromosome Distribution -->
+                <div class="chart-container">
+                    <div class="chart-title">Chromosome Distribution</div>
+                    <div class="chart-body">
+                        <div style="margin-bottom: 15px;">
+                            <button onclick="setChromType('all')" class="filter-btn active">All</button>
+                            <button onclick="setChromType('fathers')" class="filter-btn">Fathers</button>
+                            <button onclick="setChromType('mothers')" class="filter-btn">Mothers</button>
+                            <button onclick="setChromType('children')" class="filter-btn">Children</button>
+                        </div>
+                        <canvas id="chromosomeChart" style="height: 350px;"></canvas>
+                    </div>
+                </div>
+
+                <!-- Mutation Rate -->
+                <div class="chart-container">
+                    <div class="chart-title">Mutation Rate Over Time</div>
+                    <div class="chart-body">
+                        <canvas id="mutationChart" style="height: 350px;"></canvas>
+                    </div>
+                </div>
             </div>
-        </div>
-    </div>
 
-    <!-- Variantes Raras -->
-    <div class="chart-container" style="margin-bottom: 24px;">
-        <div class="chart-title">🔬 Variantes Raras (Frecuencia < 1%)</div>
-        <div class="chart-body">
-            <div style="margin-bottom: 10px; font-size: 13px; color: var(--text-secondary);">
-                Genotipos únicos o extremadamente raros en la población
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px;">
+                <!-- Population Heterozygosity -->
+                <div class="chart-container">
+                    <div class="chart-title">Population Heterozygosity</div>
+                    <div class="chart-body">
+                        <canvas id="heteroPopChart" style="height: 300px;"></canvas>
+                    </div>
+                </div>
+
+                <!-- Genotype Distribution -->
+                <div class="chart-container">
+                    <div class="chart-title">Genotype Distribution</div>
+                    <div class="chart-body">
+                        <div style="margin-bottom: 15px;">
+                            <button onclick="setGenoType('all')" class="filter-btn active">All</button>
+                            <button onclick="setGenoType('fathers')" class="filter-btn">Fathers</button>
+                            <button onclick="setGenoType('mothers')" class="filter-btn">Mothers</button>
+                            <button onclick="setGenoType('children')" class="filter-btn">Children</button>
+                        </div>
+                        <canvas id="genotypeChart" style="height: 300px;"></canvas>
+                    </div>
+                </div>
             </div>
-            <canvas id="rareVariantsChart" style="height: 300px;"></canvas>
-        </div>
-    </div>
 
-    <!-- Risk Score (Full Width) -->
-    <div class="chart-container" style="margin-bottom: 24px;">
-        <div class="chart-title">⚠️ Score de Riesgo Genético por Cohorte</div>
-        <div class="chart-body">
-            <canvas id="riskScoreChart" style="height: 350px;"></canvas>
-        </div>
-    </div>
+            <!-- Family Selector Control Bar -->
+          
 
-    <!-- Comparación de Cohortes (Full Width) -->
-    <div class="chart-container" style="margin-bottom: 24px;">
-        <div class="chart-title">👥 Comparación de Cohortes (Fathers vs Mothers vs Children)</div>
-        <div class="chart-body">
-            <canvas id="cohortComparisonChart" style="height: 350px;"></canvas>
-        </div>
-    </div>
+            <!-- Gene Detection -->
+            <div class="chart-container" style="margin-bottom: 24px;">
+                <div class="chart-title">Detected Genes (Last 30 SNPs)</div>
+                <div class="chart-body">
+                    <canvas id="geneChart" style="height: 350px;"></canvas>
+                </div>
+            </div>
 
-    <!-- Genetic Interaction Network (Full Width) -->
-    <div class="chart-container" style="margin-bottom: 24px;">
-        <div class="chart-title">🔗 Red de Interacción Genética (Top 15 Genes × Cromosomas)</div>
-        <div class="chart-body">
-            <canvas id="networkChart" style="height: 450px;"></canvas>
-        </div>
-    </div>
+            <!-- Variantes Raras -->
+            <div class="chart-container" style="margin-bottom: 24px;">
+                <div class="chart-title">Variantes Raras (Frecuencia < 1%)</div>
+                        <div class="chart-body">
+                            <div style="margin-bottom: 10px; font-size: 13px; color: var(--text-secondary);">
+                                Genotipos únicos o extremadamente raros en la población
+                            </div>
+                            <canvas id="rareVariantsChart" style="height: 300px;"></canvas>
+                        </div>
+                </div>
 
- 
-    <footer class="footer">
-        <div class="update-info">
-            <strong>Last Update:</strong> <span id="last-update">-</span><br>
-            <strong>Batches Processed:</strong> <span id="batches-count">0</span>
-        </div>
-    </footer>
-    </div>
+                <!-- Risk Score (Full Width) -->
+                <div class="chart-container" style="margin-bottom: 24px;">
+                    <div class="chart-title">Score de Riesgo Genético por Cohorte</div>
+                    <div class="chart-body">
+                        <canvas id="riskScoreChart" style="height: 350px;"></canvas>
+                    </div>
+                </div>
 
-    <script src="/static/dashboard.js"></script>
+                <!-- Comparación de Cohortes (Full Width) -->
+                <div class="chart-container" style="margin-bottom: 24px;">
+                    <div class="chart-title">Comparación de Cohortes (Fathers vs Mothers vs Children)</div>
+                    <div class="chart-body">
+                        <canvas id="cohortComparisonChart" style="height: 350px;"></canvas>
+                    </div>
+                </div>
+
+                <!-- Genetic Interaction Network (Full Width) -->
+                <div class="chart-container" style="margin-bottom: 24px;">
+                    <div class="chart-title">Red de Interacción Genética (Top 15 Genes × Cromosomas)</div>
+                    <div class="chart-body">
+                        <canvas id="networkChart" style="height: 450px;"></canvas>
+                    </div>
+                </div>
+
+
+                <footer class="footer">
+                    <div class="update-info">
+                        <strong>Last Update:</strong> <span id="last-update">-</span><br>
+                        <strong>Batches Processed:</strong> <span id="batches-count">0</span>
+                    </div>
+                </footer>
+            </div>
+
+            <script src="/static/dashboard.js"></script>
 </body>
 
 </html>
